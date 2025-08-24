@@ -1,67 +1,67 @@
-/* Tema moderno para o Lab de Estratégias */
-:root {
-    --primary-color: #1f77b4;
-    --secondary-color: #ff7f0e;
-    --success-color: #2ca02c;
-    --danger-color: #d62728;
-    --warning-color: #ff7f0e;
-    --info-color: #17a2b8;
-    --light-bg: #f8f9fa;
-    --dark-bg: #343a40;
-    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+/* Força o fundo escuro no container principal e o texto claro */
+[data-testid="stAppViewContainer"] > .main {
+    background-color: #0E1117;
+    color: #FAFAFA;
 }
 
-/* Cards modernos */
+/* Garante que a sidebar também use o tema escuro */
+[data-testid="stSidebar"] {
+    background-color: #1a1c24;
+}
+
+/* --- ESTILOS DE CARDS E SINAIS (SEU CÓDIGO ORIGINAL) --- */
 .metric-card {
-    background: linear-gradient(135deg, var(--primary-color), #4a90e2);
+    background: linear-gradient(135deg, #1f77b4, #4a90e2);
     border-radius: 12px;
     padding: 1.5rem;
     color: white;
-    box-shadow: var(--card-shadow);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     margin: 0.5rem 0;
 }
 
 .strategy-card {
-    background: white;
+    background: #262730; /* Cor escura para cards */
+    color: #FAFAFA;
     border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: var(--card-shadow);
-    border-left: 4px solid var(--primary-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #1f77b4;
     margin: 1rem 0;
 }
 
 .best-strategy {
-    border-left-color: var(--success-color);
-    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border-left-color: #2ca02c;
+    background: linear-gradient(135deg, #1e3c2c, #2a523b);
 }
 
 .second-strategy {
-    border-left-color: var(--warning-color);
-    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border-left-color: #ff7f0e;
+    background: linear-gradient(135deg, #4d3d1e, #665028);
 }
 
 .third-strategy {
-    border-left-color: var(--info-color);
-    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    border-left-color: #17a2b8;
+    background: linear-gradient(135deg, #20415a, #2c597c);
 }
 
-/* Sinais de trading */
 .signal-buy {
-    background: linear-gradient(135deg, var(--success-color), #28a745);
+    background: linear-gradient(135deg, #2ca02c, #28a745);
     color: white;
     padding: 1rem;
     border-radius: 8px;
     font-weight: bold;
     text-align: center;
+    margin: 1rem 0;
 }
 
 .signal-sell {
-    background: linear-gradient(135deg, var(--danger-color), #dc3545);
+    background: linear-gradient(135deg, #d62728, #dc3545);
     color: white;
     padding: 1rem;
     border-radius: 8px;
     font-weight: bold;
     text-align: center;
+    margin: 1rem 0;
 }
 
 .signal-flat {
@@ -71,19 +71,14 @@
     border-radius: 8px;
     font-weight: bold;
     text-align: center;
-}
-
-/* Customização do Streamlit */
-.stApp {
-    background-color: var(--light-bg);
+    margin: 1rem 0;
 }
 
 .stButton > button {
-    background: linear-gradient(135deg, var(--primary-color), #4a90e2);
+    background: linear-gradient(135deg, #1f77b4, #4a90e2);
     color: white;
     border: none;
     border-radius: 8px;
-    padding: 0.5rem 1rem;
     font-weight: 500;
     transition: all 0.3s ease;
 }
@@ -91,70 +86,4 @@
 .stButton > button:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Métricas */
-div[data-testid="metric-container"] {
-    background: white;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: var(--card-shadow);
-    border-left: 3px solid var(--primary-color);
-}
-
-
-/* Adicionar para melhorar a visibilidade dos alertas do Streamlit */
-div[data-testid="stAlert"] {
-    border-radius: 12px;
-    border-left: 5px solid;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Alerta de Erro (Vermelho) */
-div[data-baseweb="alert"][role="alert"].st-emotion-cache-ocqkz7 {
-    background-color: #441919; /* Fundo vermelho escuro */
-    border-left-color: #e55353; /* Borda vermelha clara */
-}
-
-div[data-baseweb="alert"][role="alert"].st-emotion-cache-ocqkz7 .st-emotion-cache-1wmy9hl {
-    color: #fadddd; /* Texto do erro mais claro */
-}
-
-
-/* Alerta de Aviso (Amarelo) */
-div[data-baseweb="alert"][role="alert"].st-emotion-cache-l91u2q {
-    background-color: #443d19; /* Fundo amarelo escuro */
-    border-left-color: #ffc107; /* Borda amarela clara */
-}
-
-div[data-baseweb="alert"][role="alert"].st-emotion-cache-l91u2q .st-emotion-cache-1wmy9hl {
-    color: #fff9e6; /* Texto do aviso mais claro */
-}
-
-/* Alerta de Sucesso (Verde) */
-div[data-baseweb="alert"][role="alert"].st-emotion-cache-j6n3wz {
-    background-color: #19442c; /* Fundo verde escuro */
-    border-left-color: #28a745; /* Borda verde clara */
-}
-
-div[data-baseweb="alert"][role="alert"].st-emotion-cache-j6n3wz .st-emotion-cache-1wmy9hl {
-    color: #e9f5eb; /* Texto do sucesso mais claro */
-}
-
-/* ADICIONE ESTE BLOCO NO FINAL DO SEU ARQUIVO CSS */
-
-/* Força o fundo escuro no container principal da aplicação */
-[data-testid="stAppViewContainer"] > .main {
-    background-color: #0f1116; /* Cor de fundo principal escura */
-    color: #fafafa; /* Cor do texto principal clara */
-}
-
-/* Garante que os cards e outros elementos mantenham seus estilos */
-.st-emotion-cache-1y4p8pa {
-    background-color: #1a1c24; /* Cor de fundo para containers internos */
-}
-
-/* Melhora a cor do texto padrão dentro dos expanders e outros locais */
-body, .st-emotion-cache-16txtl3 {
-    color: #fafafa;
 }
