@@ -2,48 +2,34 @@
 Módulo para carregamento e cache de dados financeiros via yfinance
 """
 import yfinance as yf
-import pandas as pd
 import streamlit as st
-from typing import Optional, Tuple
-from datetime import datetime, timedelta
-import numpy as np
+from datetime import datetime
 
-@st.cache_data(ttl=600, show_spinner=False)  # Cache por 10 minutos
-def load_price_data(ticker: str, start: str, end: str, interval: str = '1d') -> pd.DataFrame:
+@st.cache_data(ttl=600) # Adiciona cache para evitar downloads repetidos
+def load_price_data(ticker, start, end, interval):
     """
-    Carrega dados OHLCV do yfinance com cache
-    
-    Args:
-        ticker: Símbolo do ativo
-        start: Data inicial (YYYY-MM-DD)
-        end: Data final (YYYY-MM-DD)
-        interval: Intervalo dos dados
-    
-    Returns:
-        DataFrame com dados OHLCV
+    Carrega dados de preços históricos de um ativo usando o yfinance.
+    Inclui tratamento de erros robusto.
     """
     try:
-        data = yf.download(ticker, start=start, end=end, interval=interval, progress=False)
+        # A yfinance às vezes falha na primeira tentativa, adicionamos 'repair=True'
+        df = yf.download(ticker, start=start, end=end, interval=interval, auto_adjust=True, repair=True)
         
-        if data.empty:
-            st.warning(f"Nenhum dado encontrado para {ticker}")
+        if df.empty:
+            st.error(f"Nenhum dado encontrado para '{ticker}' no período selecionado. O ativo pode não ser negociado nesse intervalo ou o ticker está incorreto.")
             return pd.DataFrame()
-        
-        # Padronizar colunas
-        if isinstance(data.columns, pd.MultiIndex):
-            data.columns = data.columns.droplevel(1)
-        
-        data.columns = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-        data = data[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
-        
-        # Remover dados inválidos
-        data = data.dropna()
-        data = data[data['Volume'] > 0]
-        
-        return data
-        
+
+        # Verifica se há colunas essenciais
+        required_cols = {'Open', 'High', 'Low', 'Close', 'Volume'}
+        if not required_cols.issubset(df.columns):
+            st.error(f"Os dados baixados para '{ticker}' estão incompletos. Faltam colunas essenciais.")
+            return pd.DataFrame()
+            
+        return df
+
     except Exception as e:
-        st.error(f"Erro ao carregar dados de {ticker}: {str(e)}")
+        st.error(f"Ocorreu um erro ao tentar baixar os dados de '{ticker}'.")
+        st.error(f"Detalhe do erro: {e}")
         return pd.DataFrame()
 
 @st.cache_data(ttl=300, show_spinner=False)  # Cache por 5 minutos
