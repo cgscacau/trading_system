@@ -3,9 +3,12 @@ Engine de backtest sem look-ahead com gestão de custos e stops/targets
 """
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple  # Adicione Tuple aqui
 from dataclasses import dataclass
 from datetime import datetime
+
+# ... resto do código permanece igual
+
 
 @dataclass
 class Trade:
