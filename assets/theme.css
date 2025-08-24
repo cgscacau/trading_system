@@ -102,3 +102,41 @@ div[data-testid="metric-container"] {
     border-left: 3px solid var(--primary-color);
 }
 
+
+/* Adicionar para melhorar a visibilidade dos alertas do Streamlit */
+div[data-testid="stAlert"] {
+    border-radius: 12px;
+    border-left: 5px solid;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Alerta de Erro (Vermelho) */
+div[data-baseweb="alert"][role="alert"].st-emotion-cache-ocqkz7 {
+    background-color: #441919; /* Fundo vermelho escuro */
+    border-left-color: #e55353; /* Borda vermelha clara */
+}
+
+div[data-baseweb="alert"][role="alert"].st-emotion-cache-ocqkz7 .st-emotion-cache-1wmy9hl {
+    color: #fadddd; /* Texto do erro mais claro */
+}
+
+
+/* Alerta de Aviso (Amarelo) */
+div[data-baseweb="alert"][role="alert"].st-emotion-cache-l91u2q {
+    background-color: #443d19; /* Fundo amarelo escuro */
+    border-left-color: #ffc107; /* Borda amarela clara */
+}
+
+div[data-baseweb="alert"][role="alert"].st-emotion-cache-l91u2q .st-emotion-cache-1wmy9hl {
+    color: #fff9e6; /* Texto do aviso mais claro */
+}
+
+/* Alerta de Sucesso (Verde) */
+div[data-baseweb="alert"][role="alert"].st-emotion-cache-j6n3wz {
+    background-color: #19442c; /* Fundo verde escuro */
+    border-left-color: #28a745; /* Borda verde clara */
+}
+
+div[data-baseweb="alert"][role="alert"].st-emotion-cache-j6n3wz .st-emotion-cache-1wmy9hl {
+    color: #e9f5eb; /* Texto do sucesso mais claro */
+}
