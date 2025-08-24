@@ -1,10 +1,16 @@
 """
 Cálculo de métricas de performance para estratégias de trading
 """
+"""
+Cálculo de métricas de performance para estratégias de trading
+"""
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple  # Adicione Tuple aqui
 from datetime import datetime
+
+# ... resto do código permanece igual
+
 
 def calculate_performance_metrics(trades: List, equity_curve: pd.Series, 
                                 initial_capital: float) -> Dict[str, Any]:
