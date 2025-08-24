@@ -215,47 +215,106 @@ def run_analysis(config):
         st.error(f"❌ Erro durante execução: {str(e)}")
         st.exception(e)  # Mostra stack trace completo
 
-def simple_backtest(data, config):
-    """Backtest simplificado"""
-    initial_capital = config['backtest']['initial_equity']
+def simple_backtest(data, config, ticker):
+    """Backtest robusto usando itertuples para evitar ambiguidade com Series"""
+    initial_capital = float(config['backtest']['initial_equity'])
     capital = initial_capital
     position = 0
-    entry_price = 0
+    entry_price = 0.0
+    entry_date = None
     
     equity_curve = []
     trades = []
     
-    for i, (date, row) in enumerate(data.iterrows()):
-        current_price = row['Close']
+    # Preparação dos dados
+    df = data.copy()
+    
+    # Garante que temos coluna Date como índice datetime
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'])
+        df = df.set_index('Date')
+    elif not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+    
+    # Ordena por data e garante que signal seja inteiro
+    df = df.sort_index()
+    df['signal'] = df['signal'].fillna(0).astype('int8')
+    
+    # Parâmetros de risco
+    risk_pct = float(config['risk'].get('risk_per_trade_pct', 0.01))
+    leverage_factor = 10.0
+    
+    # Loop principal usando itertuples (sempre retorna escalares)
+    for row in df.itertuples(index=True):
+        current_date = row.Index
+        current_price = float(row.Close)
+        current_signal = int(row.signal)  # Sempre escalar
         
-        # Gerencia posições
-        if position == 0 and row['signal'] != 0:
-            # Abre posição
-            position = row['signal']
+        # Lógica de abertura de posição
+        if position == 0 and current_signal != 0:
+            position = current_signal
             entry_price = current_price
+            entry_date = current_date
             
-        elif position != 0 and (row['signal'] != position or row['signal'] == 0):
-            # Fecha posição
-            if position == 1:
-                trade_return = (current_price - entry_price) / entry_price
-            else:
-                trade_return = (entry_price - current_price) / entry_price
+        # Lógica de fechamento de posição
+        elif position != 0 and (current_signal != position or current_signal == 0):
+            # Calcula retorno do trade
+            if position == 1:  # Posição comprada
+                trade_return = (current_price / entry_price) - 1.0
+            else:  # Posição vendida
+                trade_return = (entry_price / current_price) - 1.0
             
-            # Aplica risco por trade
-            position_size = config['risk']['risk_per_trade_pct']
-            capital *= (1 + trade_return * position_size * 10)  # Alavancagem simulada
+            # Aplica ao capital
+            capital *= (1.0 + trade_return * risk_pct * leverage_factor)
             
+            # Registra o trade
             trades.append({
-                'Date': date,
+                'Entry_Date': entry_date,
+                'Exit_Date': current_date,
                 'Entry_Price': entry_price,
                 'Exit_Price': current_price,
-                'Return': trade_return * 100,
-                'Signal': 'BUY' if position == 1 else 'SELL'
+                'Return_Pct': trade_return * 100.0,
+                'PnL': (trade_return * risk_pct * leverage_factor * initial_capital),
+                'Signal': 'BUY' if position == 1 else 'SELL',
+                'Ticker': ticker
             })
             
+            # Reset da posição
             position = 0
+            entry_price = 0.0
+            entry_date = None
         
-        equity_curve.append({'Date': date, 'Equity': capital})
+        # Atualiza curva de equity
+        equity_curve.append({
+            'Date': current_date, 
+            'Equity': capital,
+            'Ticker': ticker
+        })
+    
+    # Fecha posição final se necessário
+    if position != 0:
+        last_row = df.iloc[-1]
+        last_date = df.index[-1]
+        last_price = float(last_row['Close'])
+        
+        if position == 1:
+            final_return = (last_price / entry_price) - 1.0
+        else:
+            final_return = (entry_price / last_price) - 1.0
+            
+        capital *= (1.0 + final_return * risk_pct * leverage_factor)
+        
+        trades.append({
+            'Entry_Date': entry_date,
+            'Exit_Date': last_date,
+            'Entry_Price': entry_price,
+            'Exit_Price': last_price,
+            'Return_Pct': final_return * 100.0,
+            'PnL': (final_return * risk_pct * leverage_factor * initial_capital),
+            'Signal': 'BUY' if position == 1 else 'SELL',
+            'Ticker': ticker,
+            'Exit_Reason': 'FORCE_CLOSE_END'
+        })
     
     return pd.DataFrame(equity_curve), pd.DataFrame(trades)
 
