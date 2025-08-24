@@ -1,32 +1,27 @@
 import pandas as pd
 import ta
 
-# Importa outras estratégias para serem usadas no Meta-Ensemble
-from .moving_averages import ema_crossover_strategy, EMA_CROSSOVER_PARAMS
-from .rsi_strategies import rsi_standard_strategy, RSI_STANDARD_PARAMS
-from .bollinger_bands import bollinger_mean_reversion_strategy, BOLLINGER_MEAN_REVERSION_PARAMS
+# ATENÇÃO: Não estamos mais importando de outros arquivos de estratégia locais
+# para evitar erros em cascata.
 
 # --- PARÂMETROS PARA AS ESTRATÉGIAS DESTE ARQUIVO ---
-# Garanta que estes nomes são EXATAMENTE os mesmos que você importa em app.py
 VOL_REGIME_SWITCH_PARAMS = {'vol_period': 14, 'vol_threshold_pct': 1.5, 'trend_period': 50}
 META_ENSEMBLE_PARAMS = {}
 PULLBACK_TREND_BIAS_PARAMS = {'trend_period': 50, 'pullback_period': 5}
 
+
 # --- IMPLEMENTAÇÃO DAS ESTRATÉGIAS ---
-# Garanta que os nomes das funções são EXATAMENTE os mesmos
 
 def vol_regime_switch_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
-    """
-    Estratégia que alterna entre seguidora de tendência e reversão à média
-    baseado no regime de volatilidade (usando ATR).
-    """
+    """Estratégia que alterna com base no regime de volatilidade (ATR)."""
     df_s = df.copy()
     vol_period = params.get('vol_period', 14)
     vol_threshold_pct = params.get('vol_threshold_pct', 1.5)
     trend_period = params.get('trend_period', 50)
 
+    # Garante que os dados passados para os indicadores são 1-dimensionais
     df_s['atr'] = ta.volatility.average_true_range(df_s['High'], df_s['Low'], df_s['Close'], window=vol_period)
-    df_s['atr_ma'] = df_s['atr'].rolling(window=trend_period).mean()
+    df_s['atr_ma'] = ta.trend.sma_indicator(df_s['atr'], window=trend_period)
     df_s['trend_ma'] = ta.trend.sma_indicator(df_s['Close'], window=trend_period)
     
     signals = pd.DataFrame(index=df_s.index)
@@ -35,6 +30,7 @@ def vol_regime_switch_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     high_vol_condition = df_s['atr'] > (df_s['atr_ma'] * vol_threshold_pct)
     low_vol_condition = ~high_vol_condition
     
+    # Lógica de sinais
     signals.loc[high_vol_condition & (df_s['Close'] < df_s['trend_ma']), 'signal'] = 1
     signals.loc[high_vol_condition & (df_s['Close'] > df_s['trend_ma']), 'signal'] = -1
     signals.loc[low_vol_condition & (df_s['Close'] > df_s['trend_ma']), 'signal'] = 1
@@ -45,32 +41,48 @@ def vol_regime_switch_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
 
     return signals[['signal', 'stop', 'target']]
 
+
 def meta_ensemble_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
-    """
-    Combina os sinais de múltiplas estratégias para um sinal mais robusto.
-    """
+    """Versão autossuficiente que combina sinais de múltiplas lógicas."""
     df_s = df.copy()
     signals = pd.DataFrame(index=df_s.index)
+
+    # --- Lógicas re-implementadas aqui para remover dependências externas ---
+    # 1. Lógica de Cruzamento de Médias Móveis (EMA)
+    ema_short = ta.trend.ema_indicator(df_s['Close'], window=12)
+    ema_long = ta.trend.ema_indicator(df_s['Close'], window=26)
+    ema_signal = pd.Series(0, index=df_s.index, dtype=int)
+    ema_signal[ema_short > ema_long] = 1
+    ema_signal[ema_short < ema_long] = -1
+
+    # 2. Lógica de IFR (RSI) Padrão
+    rsi = ta.momentum.rsi(df_s['Close'], window=14)
+    rsi_signal = pd.Series(0, index=df_s.index, dtype=int)
+    rsi_signal[rsi < 30] = 1
+    rsi_signal[rsi > 70] = -1
     
-    ema_signals = ema_crossover_strategy(df_s, EMA_CROSSOVER_PARAMS)
-    rsi_signals = rsi_standard_strategy(df_s, RSI_STANDARD_PARAMS)
-    bb_signals = bollinger_mean_reversion_strategy(df_s, BOLLINGER_MEAN_REVERSION_PARAMS)
-    
-    # Lógica de Votação/Ensemble
-    vote_sum = ema_signals['signal'] + rsi_signals['signal'] + bb_signals['signal']
+    # 3. Lógica de Reversão à Média com Bandas de Bollinger
+    indicator_bb = ta.volatility.BollingerBands(close=df_s['Close'], window=20, window_dev=2)
+    bb_upper = indicator_bb.bollinger_hband()
+    bb_lower = indicator_bb.bollinger_lband()
+    bb_signal = pd.Series(0, index=df_s.index, dtype=int)
+    bb_signal[df_s['Close'] < bb_lower] = 1
+    bb_signal[df_s['Close'] > bb_upper] = -1
+
+    # --- Lógica de Votação ---
+    vote_sum = ema_signal + rsi_signal + bb_signal
     signals['signal'] = 0
-    signals.loc[vote_sum >= 2, 'signal'] = 1   # Compra se 2 ou mais estratégias concordarem
-    signals.loc[vote_sum <= -2, 'signal'] = -1 # Vende se 2 ou mais estratégias concordarem
+    signals.loc[vote_sum >= 2, 'signal'] = 1   # Compra se 2 ou mais concordarem
+    signals.loc[vote_sum <= -2, 'signal'] = -1 # Vende se 2 ou mais concordarem
     
     signals['stop'] = df_s.apply(lambda row: row['Low'] * 0.98 if signals.loc[row.name, 'signal'] == 1 else row['High'] * 1.02, axis=1)
     signals['target'] = df_s.apply(lambda row: row['High'] * 1.05 if signals.loc[row.name, 'signal'] == 1 else row['Low'] * 0.95, axis=1)
-
+    
     return signals[['signal', 'stop', 'target']]
 
+
 def pullback_trend_bias_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
-    """
-    Busca por pullbacks (pequenas correções) dentro de uma tendência de alta estabelecida.
-    """
+    """Busca por pullbacks dentro de uma tendência de alta."""
     df_s = df.copy()
     trend_period = params.get('trend_period', 50)
     pullback_period = params.get('pullback_period', 5)
