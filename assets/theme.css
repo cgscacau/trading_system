@@ -1,1 +1,104 @@
+/* Tema moderno para o Lab de Estratégias */
+:root {
+    --primary-color: #1f77b4;
+    --secondary-color: #ff7f0e;
+    --success-color: #2ca02c;
+    --danger-color: #d62728;
+    --warning-color: #ff7f0e;
+    --info-color: #17a2b8;
+    --light-bg: #f8f9fa;
+    --dark-bg: #343a40;
+    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Cards modernos */
+.metric-card {
+    background: linear-gradient(135deg, var(--primary-color), #4a90e2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    color: white;
+    box-shadow: var(--card-shadow);
+    margin: 0.5rem 0;
+}
+
+.strategy-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    border-left: 4px solid var(--primary-color);
+    margin: 1rem 0;
+}
+
+.best-strategy {
+    border-left-color: var(--success-color);
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+}
+
+.second-strategy {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+}
+
+.third-strategy {
+    border-left-color: var(--info-color);
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+}
+
+/* Sinais de trading */
+.signal-buy {
+    background: linear-gradient(135deg, var(--success-color), #28a745);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.signal-sell {
+    background: linear-gradient(135deg, var(--danger-color), #dc3545);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.signal-flat {
+    background: linear-gradient(135deg, #6c757d, #adb5bd);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Customização do Streamlit */
+.stApp {
+    background-color: var(--light-bg);
+}
+
+.stButton > button {
+    background: linear-gradient(135deg, var(--primary-color), #4a90e2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Métricas */
+div[data-testid="metric-container"] {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: var(--card-shadow);
+    border-left: 3px solid var(--primary-color);
+}
 
