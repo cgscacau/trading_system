@@ -67,47 +67,60 @@ def calculate_rsi(prices, period=14):
     return 100 - (100 / (1 + rs))
 
 def simple_backtest(data, config, ticker):
-    """Backtest robusto usando itertuples para evitar ambiguidade com Series"""
-    initial_capital = float(config['backtest']['initial_equity'])
-    capital = initial_capital
-    position = 0
-    entry_price = 0.0
-    entry_date = None
+    """Backtest robusto com validação completa de colunas"""
     
-    equity_curve = []
-    trades = []
-    
-    # Preparação dos dados
-    df = data.copy()
-    
-    # Garante que temos coluna Date como índice datetime
-    if 'Date' in df.columns:
-        df['Date'] = pd.to_datetime(df['Date'])
-        df = df.set_index('Date')
-    elif not isinstance(df.index, pd.DatetimeIndex):
-        df.index = pd.to_datetime(df.index)
-    
-    # Ordena por data e garante que signal seja inteiro
-    df = df.sort_index()
-    df['signal'] = df['signal'].fillna(0).astype('int8')
-    
-    # Remove linhas com dados insuficientes
-    df = df.dropna(subset=['Close', 'signal'])
-    
-    if len(df) < 10:
-        st.warning(f"⚠️ {ticker}: Dados insuficientes para backtest")
-        return pd.DataFrame(), pd.DataFrame()
-    
-    # Parâmetros de risco
-    risk_pct = float(config['risk'].get('risk_per_trade_pct', 0.01))
-    leverage_factor = 10.0
-    
-    # Loop principal usando itertuples (sempre retorna escalares)
     try:
+        # Sanitiza dados primeiro
+        df = sanitize_dataframe(data, ticker)
+        
+        # Configura índice de data
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.set_index('Date')
+        elif not isinstance(df.index, pd.DatetimeIndex):
+            df.index = pd.to_datetime(df.index)
+        
+        # Ordena por data
+        df = df.sort_index()
+        
+        # Valida colunas essenciais
+        required_columns = ['Close', 'signal']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            raise KeyError(f"{ticker}: Colunas faltando: {missing_columns}. Disponíveis: {list(df.columns)}")
+        
+        # Limpa dados inválidos
+        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
+        df['signal'] = pd.to_numeric(df['signal'], errors='coerce').fillna(0).astype('int8')
+        
+        # Remove registros inválidos
+        df = df.dropna(subset=['Close'])
+        df = df[df['Close'] > 0]  # Remove preços zero/negativos
+        
+        if len(df) < 10:
+            st.warning(f"⚠️ {ticker}: Dados insuficientes após limpeza ({len(df)} registros)")
+            return pd.DataFrame(), pd.DataFrame()
+        
+        # Parâmetros do backtest
+        initial_capital = float(config['backtest']['initial_equity'])
+        capital = initial_capital
+        position = 0
+        entry_price = 0.0
+        entry_date = None
+        
+        equity_curve = []
+        trades = []
+        
+        # Parâmetros de risco
+        risk_pct = float(config['risk'].get('risk_per_trade_pct', 0.01))
+        leverage_factor = 10.0
+        
+        # Loop principal usando itertuples (mais seguro)
         for row in df.itertuples(index=True):
             current_date = row.Index
             current_price = float(row.Close)
-            current_signal = int(row.signal)  # Sempre escalar
+            current_signal = int(row.signal)
             
             # Lógica de abertura de posição
             if position == 0 and current_signal != 0:
@@ -152,9 +165,8 @@ def simple_backtest(data, config, ticker):
         
         # Fecha posição final se necessário
         if position != 0 and len(df) > 0:
-            last_row = df.iloc[-1]
+            last_price = float(df['Close'].iloc[-1])
             last_date = df.index[-1]
-            last_price = float(last_row['Close'])
             
             if position == 1:
                 final_return = (last_price / entry_price) - 1.0
@@ -174,12 +186,15 @@ def simple_backtest(data, config, ticker):
                 'Ticker': ticker,
                 'Exit_Reason': 'FORCE_CLOSE_END'
             })
-            
+        
+        st.success(f"✅ {ticker}: Backtest concluído - {len(trades)} trades executados")
+        return pd.DataFrame(equity_curve), pd.DataFrame(trades)
+        
     except Exception as e:
-        st.error(f"❌ Erro no backtest de {ticker}: {e}")
+        st.error(f"❌ Erro no backtest {ticker}: {type(e).__name__}: {e}")
+        st.exception(e)  # Mostra traceback completo
         return pd.DataFrame(), pd.DataFrame()
-    
-    return pd.DataFrame(equity_curve), pd.DataFrame(trades)
+
 
 def main():
     st.title("🚀 Sistema de Trading Quantitativo")
@@ -250,7 +265,7 @@ def main():
         """)
 
 def run_analysis(config):
-    """Executa análise completa dos ativos"""
+    """Executa análise completa com tratamento robusto de dados"""
     progress = st.progress(0)
     status = st.empty()
     
@@ -268,11 +283,13 @@ def run_analysis(config):
                     end=config['data']['end'],
                     progress=False
                 )
+                
                 if not data.empty:
                     all_data[ticker] = data
                     st.success(f"✅ {ticker}: {len(data)} registros coletados")
                 else:
                     st.warning(f"⚠️ {ticker}: Nenhum dado encontrado")
+                    
             except Exception as e:
                 st.error(f"❌ Erro ao coletar {ticker}: {e}")
         
@@ -287,73 +304,74 @@ def run_analysis(config):
         processed_data = {}
         for ticker, data in all_data.items():
             try:
-                # Reset index para garantir estrutura consistente
-                data = data.reset_index()
+                # Sanitiza e reseta índice
+                df = sanitize_dataframe(data, ticker)
+                df = df.reset_index()
                 
-                # Indicadores técnicos
-                data['returns'] = data['Close'].pct_change()
-                data['SMA_20'] = data['Close'].rolling(20).mean()
-                data['SMA_50'] = data['Close'].rolling(50).mean()
-                data['EMA_12'] = data['Close'].ewm(span=12).mean()
-                data['EMA_26'] = data['Close'].ewm(span=26).mean()
-                data['RSI'] = calculate_rsi(data['Close'])
+                # Calcula indicadores técnicos
+                df['returns'] = df['Close'].pct_change()
+                df['SMA_20'] = df['Close'].rolling(20).mean()
+                df['SMA_50'] = df['Close'].rolling(50).mean()
+                df['RSI'] = calculate_rsi(df['Close'])
                 
-                # MACD
-                data['MACD'] = data['EMA_12'] - data['EMA_26']
-                data['MACD_signal'] = data['MACD'].ewm(span=9).mean()
-                
-                # ATR
-                high_low = data['High'] - data['Low']
-                high_close = np.abs(data['High'] - data['Close'].shift())
-                low_close = np.abs(data['Low'] - data['Close'].shift())
+                # ATR para gestão de risco
+                high_low = df['High'] - df['Low']
+                high_close = np.abs(df['High'] - df['Close'].shift())
+                low_close = np.abs(df['Low'] - df['Close'].shift())
                 true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-                data['ATR'] = true_range.rolling(14).mean()
+                df['ATR'] = true_range.rolling(14).mean()
                 
                 # Geração de sinais
-                data['signal'] = 0
+                df['signal'] = 0
                 
-                # Condições booleanas explícitas
+                # Condições de compra e venda
                 buy_condition = (
-                    (data['SMA_20'] > data['SMA_50']) & 
-                    (data['RSI'] < 70) & 
-                    (data['RSI'] > 30)
+                    (df['SMA_20'] > df['SMA_50']) & 
+                    (df['RSI'] < 70) & 
+                    (df['RSI'] > 30)
                 )
                 sell_condition = (
-                    (data['SMA_20'] < data['SMA_50']) & 
-                    (data['RSI'] > 30) & 
-                    (data['RSI'] < 70)
+                    (df['SMA_20'] < df['SMA_50']) & 
+                    (df['RSI'] > 30) & 
+                    (df['RSI'] < 70)
                 )
                 
                 # Aplica sinais
-                data.loc[buy_condition, 'signal'] = 1
-                data.loc[sell_condition, 'signal'] = -1
+                df.loc[buy_condition, 'signal'] = 1
+                df.loc[sell_condition, 'signal'] = -1
                 
-                # Garante tipo inteiro
-                data['signal'] = data['signal'].astype('int8')
+                # Garante que signal é inteiro
+                df['signal'] = df['signal'].fillna(0).astype('int8')
                 
-                processed_data[ticker] = data.dropna()
+                # Remove NaN apenas das colunas essenciais
+                df_clean = df.dropna(subset=['Date', 'Close'])
+                
+                if len(df_clean) < 50:
+                    st.warning(f"⚠️ {ticker}: Poucos dados válidos ({len(df_clean)} registros)")
+                    continue
+                
+                processed_data[ticker] = df_clean
+                st.success(f"✅ {ticker}: Indicadores calculados ({len(df_clean)} registros válidos)")
                 
             except Exception as e:
                 st.error(f"❌ Erro processando {ticker}: {e}")
+                st.exception(e)
                 continue
         
         if not processed_data:
             st.error("❌ Nenhum dado processado com sucesso!")
             return
         
-        # Backtest - CORREÇÃO APLICADA AQUI
+        # Backtest
         status.text("📈 Executando backtest...")
         progress.progress(75)
         
         results = {}
         for ticker, data in processed_data.items():
             try:
-                # ✅ CORREÇÃO: Passa o ticker como terceiro parâmetro
                 equity_curve, trades = simple_backtest(data, config, ticker)
-                results[ticker] = {'equity': equity_curve, 'trades': trades}
-                
                 if not equity_curve.empty:
-                    st.success(f"✅ Backtest {ticker}: {len(trades)} trades executados")
+                    results[ticker] = {'equity': equity_curve, 'trades': trades}
                     
             except Exception as e:
                 st.error(f"❌ Erro no backtest {ticker}: {e}")
@@ -370,6 +388,7 @@ def run_analysis(config):
     except Exception as e:
         st.error(f"❌ Erro durante execução: {str(e)}")
         st.exception(e)
+
 
 def display_results(results, data):
     """Exibe resultados da análise"""
