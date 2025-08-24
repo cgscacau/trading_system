@@ -297,9 +297,7 @@ def validate_inputs():
         st.error("Selecione pelo menos uma estratégia")
         return False
     
-    # As variáveis capital_brl, risk_pct, fx_rate são acessíveis globalmente
-    # pois são definidas no `with st.sidebar:` que é processado antes da chamada desta função.
-    risk_errors = validate_risk_parameters(capital_brl, risk_pct, fx_rate, 100) # 100 é um limite genérico para quantidade de ativo
+    risk_errors = validate_risk_parameters(capital_brl, risk_pct, fx_rate, 100)
     if risk_errors:
         for field, error in risk_errors.items():
             st.error(f"{field}: {error}")
@@ -311,7 +309,6 @@ if run_analysis:
     if not validate_inputs():
         st.stop()
     
-    # Carregar dados
     with st.spinner(f"Carregando dados de {ticker}..."):
         df = load_price_data(ticker, start_date.strftime('%Y-%m-%d'), 
                            end_date.strftime('%Y-%m-%d'), interval)
@@ -320,10 +317,8 @@ if run_analysis:
         st.error("Não foi possível carregar os dados. Verifique o ticker e período.")
         st.stop()
     
-    # Informações do ativo
     asset_info = get_asset_info(ticker)
     
-    # Executar backtests
     results = {}
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -332,18 +327,15 @@ if run_analysis:
         status_text.text(f"Executando {strategy}...")
         
         try:
-            # Gerar sinais
             signals = run_strategy(strategy, df, ml_config)
             
             if signals.empty or (signals['signal'] == 0).all():
                 st.warning(f"Nenhum sinal gerado para {strategy}")
                 continue
             
-            # Executar backtest
             engine = BacktestEngine(capital_brl, fee_pct, slippage_pct)
             backtest_result = engine.run_backtest(df, signals, max_bars)
             
-            # Calcular métricas
             metrics = calculate_performance_metrics(
                 backtest_result['trades'],
                 backtest_result['equity_curve'],
@@ -369,11 +361,14 @@ if run_analysis:
         st.error("Nenhuma estratégia foi executada com sucesso")
         st.stop()
     
-    # Salvar no session state
     st.session_state['results'] = results
     st.session_state['df'] = df
     st.session_state['asset_info'] = asset_info
     st.session_state['fx_rate'] = fx_rate
+    st.session_state['capital_brl'] = capital_brl
+    st.session_state['risk_pct'] = risk_pct
+    st.session_state['rankings'] = rank_strategies({name: result['metrics'] for name, result in results.items()}, ranking_criterion)
+
 
 # Exibir resultados
 if 'results' in st.session_state and st.session_state['results']:
@@ -381,8 +376,10 @@ if 'results' in st.session_state and st.session_state['results']:
     df = st.session_state['df']
     asset_info = st.session_state['asset_info']
     fx_rate = st.session_state['fx_rate']
+    capital_brl = st.session_state['capital_brl']
+    risk_pct = st.session_state['risk_pct']
+    rankings = st.session_state['rankings']
     
-    # Tabs principais
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 Visão Geral", 
         "📈 Backtests", 
@@ -394,14 +391,11 @@ if 'results' in st.session_state and st.session_state['results']:
     with tab1:
         st.header("📊 Visão Geral")
         
-        # Ranking das estratégias
         metrics_only = {name: result['metrics'] for name, result in results.items()}
-        rankings = rank_strategies(metrics_only, ranking_criterion)
         
         if rankings:
             st.subheader("🏆 Ranking das Estratégias")
             
-            # Cards do top 3
             if len(rankings) >= 3:
                 cols = st.columns(3)
                 medals = ["🥇", "🥈", "🥉"]
@@ -410,7 +404,6 @@ if 'results' in st.session_state and st.session_state['results']:
                 for i, (strategy_name, score) in enumerate(rankings[:3]):
                     with cols[i]:
                         metrics = results[strategy_name]['metrics']
-                        
                         st.markdown(f"""
                         <div class="strategy-card {colors[i]}">
                             <h3>{medals[i]} {strategy_name}</h3>
@@ -421,7 +414,6 @@ if 'results' in st.session_state and st.session_state['results']:
                         </div>
                         """, unsafe_allow_html=True)
             
-            # Métricas da melhor estratégia
             best_strategy = rankings[0][0]
             best_metrics = results[best_strategy]['metrics']
             
@@ -435,7 +427,6 @@ if 'results' in st.session_state and st.session_state['results']:
             col5.metric("Hit Rate", f"{best_metrics['Hit Rate']:.2%}")
             col6.metric("Profit Factor", f"{best_metrics['Profit Factor']:.2f}")
             
-            # Sinal atual
             st.subheader("🎯 Sinal Atual da Melhor Estratégia")
             
             current_signals = results[best_strategy]['signals']
@@ -443,22 +434,14 @@ if 'results' in st.session_state and st.session_state['results']:
                 last_signal = current_signals.iloc[-1]
                 current_price = df['Close'].iloc[-1]
                 
-                signal_text = "FLAT"
-                signal_class = "signal-flat"
+                signal_text, signal_class = ("FLAT", "signal-flat")
+                if last_signal['signal'] == 1: signal_text, signal_class = ("COMPRA", "signal-buy")
+                elif last_signal['signal'] == -1: signal_text, signal_class = ("VENDA", "signal-sell")
                 
-                if last_signal['signal'] == 1:
-                    signal_text = "COMPRA"
-                    signal_class = "signal-buy"
-                elif last_signal['signal'] == -1:
-                    signal_text = "VENDA"
-                    signal_class = "signal-sell"
+                stop_text = f"{last_signal.get('stop', 'N/A'):.2f}" if pd.notna(last_signal.get('stop')) else 'N/A'
+                target_text = f"{last_signal.get('target', 'N/A'):.2f}" if pd.notna(last_signal.get('target')) else 'N/A'
                 
-                stop_text = f"{last_signal.get('stop', 'N/A'):.2f}" if not pd.isna(last_signal.get('stop', np.nan)) else 'N/A'
-                target_text = f"{last_signal.get('target', 'N/A'):.2f}" if not pd.isna(last_signal.get('target', np.nan)) else 'N/A'
-                
-                confidence_text = ""
-                if 'probability' in last_signal and not pd.isna(last_signal['probability']):
-                    confidence_text = f"<p>Confiança (ML): {last_signal['probability']:.2%}</p>"
+                confidence_text = f"<p>Confiança (ML): {last_signal['probability']:.2%}</p>" if 'probability' in last_signal and pd.notna(last_signal['probability']) else ""
                 
                 st.markdown(f"""
                 <div class="{signal_class}">
@@ -470,7 +453,6 @@ if 'results' in st.session_state and st.session_state['results']:
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Comparação visual
             st.subheader("📊 Comparação de Estratégias")
             try:
                 fig_comparison = plot_strategy_comparison(metrics_only)
@@ -481,36 +463,24 @@ if 'results' in st.session_state and st.session_state['results']:
     with tab2:
         st.header("📈 Resultados dos Backtests")
         
-        # Tabela de métricas
         try:
-            metrics_table = create_metrics_table(metrics_only)
-            if not metrics_table.empty:
-                st.dataframe(metrics_table, use_container_width=True)
+            metrics_table = create_metrics_table({name: result['metrics'] for name, result in results.items()})
+            if not metrics_table.empty: st.dataframe(metrics_table, use_container_width=True)
         except Exception as e:
             st.error(f"Erro ao criar tabela: {e}")
         
-        # Detalhes por estratégia
-        selected_strategy = st.selectbox(
-            "Selecione uma estratégia para detalhes:",
-            options=list(results.keys())
-        )
+        selected_strategy = st.selectbox("Selecione uma estratégia para detalhes:", options=list(results.keys()))
         
         if selected_strategy:
             strategy_metrics = results[selected_strategy]['metrics']
             
-            # Curva de capital
             st.subheader(f"💹 Curva de Capital - {selected_strategy}")
             try:
-                fig_equity = plot_equity_curve(
-                    strategy_metrics['Equity Curve'],
-                    strategy_metrics['Drawdown Series'],
-                    f"Evolução do Capital - {selected_strategy}"
-                )
+                fig_equity = plot_equity_curve(strategy_metrics['Equity Curve'], strategy_metrics['Drawdown Series'], f"Evolução do Capital - {selected_strategy}")
                 st.plotly_chart(fig_equity, use_container_width=True)
             except Exception as e:
                 st.error(f"Erro ao plotar curva: {e}")
             
-            # Retornos mensais
             try:
                 if len(strategy_metrics['Equity Curve']) > 30:
                     st.subheader("📅 Retornos Mensais")
@@ -522,38 +492,24 @@ if 'results' in st.session_state and st.session_state['results']:
     with tab3:
         st.header("📉 Gráfico de Trades")
         
-        chart_strategy = st.selectbox(
-            "Estratégia para visualizar:",
-            options=list(results.keys()),
-            key="chart_strategy"
-        )
+        chart_strategy = st.selectbox("Estratégia para visualizar:", options=list(results.keys()), key="chart_strategy")
         
         if chart_strategy:
             trades = results[chart_strategy]['trades']
             
             try:
-                fig_trades = plot_candlestick_with_trades(
-                    df, trades, f"{ticker} - {chart_strategy}"
-                )
+                fig_trades = plot_candlestick_with_trades(df, trades, f"{ticker} - {chart_strategy}")
                 st.plotly_chart(fig_trades, use_container_width=True)
             except Exception as e:
                 st.error(f"Erro ao plotar gráfico: {e}")
             
-            # Estatísticas dos trades
             if trades:
                 st.subheader("📊 Estatísticas dos Trades")
-                
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Total de Trades", len(trades))
-                
-                winning_trades = [t for t in trades if t.net_pnl > 0]
-                col2.metric("Trades Vencedores", len(winning_trades))
-                
-                avg_pnl = np.mean([t.net_pnl for t in trades])
-                col3.metric("PnL Médio", f"{avg_pnl:.2f}")
-                
-                avg_bars = np.mean([t.bars_held for t in trades])
-                col4.metric("Barras Médias", f"{avg_bars:.1f}")
+                col2.metric("Trades Vencedores", len([t for t in trades if t.net_pnl > 0]))
+                col3.metric("PnL Médio", f"{np.mean([t.net_pnl for t in trades]):.2f}")
+                col4.metric("Barras Médias", f"{np.mean([t.bars_held for t in trades]):.1f}")
     
     with tab4:
         st.header("🤖 Machine Learning")
@@ -561,7 +517,6 @@ if 'results' in st.session_state and st.session_state['results']:
         if "Machine Learning" in results and 'ml_strategy' in st.session_state:
             try:
                 ml_data = st.session_state.ml_strategy.validation_results
-                
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -573,13 +528,9 @@ if 'results' in st.session_state and st.session_state['results']:
                         fig_features = plot_ml_feature_importance(ml_data['feature_importance'])
                         st.plotly_chart(fig_features, use_container_width=True)
                 
-                # Matriz de confusão
                 if 'confusion_matrix' in ml_data:
                     st.subheader("📊 Matriz de Confusão")
-                    cm = ml_data['confusion_matrix']
-                    cm_df = pd.DataFrame(cm, 
-                                       index=['Real Negativo', 'Real Positivo'],
-                                       columns=['Pred Negativo', 'Pred Positivo'])
+                    cm_df = pd.DataFrame(ml_data['confusion_matrix'], index=['Real Negativo', 'Real Positivo'], columns=['Pred Negativo', 'Pred Positivo'])
                     st.dataframe(cm_df)
             except Exception as e:
                 st.error(f"Erro ao exibir dados ML: {e}")
@@ -589,24 +540,26 @@ if 'results' in st.session_state and st.session_state['results']:
     with tab5:
         st.header("💼 Sizing & Gestão de Risco")
         
-        # Informações do ativo
         col1, col2 = st.columns(2)
         
         with col1:
             st.subheader("ℹ️ Informações do Ativo")
-            st.write(f"**Nome:** {asset_info['name']}")
-            st.write(f"**Setor:** {asset_info['sector']}")
-            st.write(f"**Moeda:** {asset_info['currency']}")
+            if asset_info:
+                st.write(f"**Nome:** {asset_info.get('name', 'N/A')}")
+                st.write(f"**Setor:** {asset_info.get('sector', 'N/A')}")
+                st.write(f"**Moeda:** {asset_info.get('currency', 'N/A')}")
             st.write(f"**Preço Atual:** {df['Close'].iloc[-1]:.2f}")
         
         with col2:
             st.subheader("💱 Parâmetros de Risco")
-            st.write(f"**Capital:** R$ {capital_brl:,.2f}")
-            st.write(f"**Risco por Trade:** {risk_pct:.1%}")
-            st.write(f"**Taxa USDBRL:** {fx_rate:.4f}")
+            st.metric("Capital Total", f"R$ {capital_brl:,.2f}")
+            st.metric("Risco por Trade", f"{risk_pct:.2%}")
+            st.metric("Taxa de Câmbio USDBRL", f"{fx_rate:.4f}")
+
+        st.divider()
         
-        # Cálculo de posição
-        st.subheader("📊 Cálculo de Posição")
+        st.subheader("📊 Cálculo de Posição Sugerido")
+        st.write("Baseado no sinal mais recente da estratégia com melhor ranking.")
         
         if rankings:
             best_strategy = rankings[0][0]
@@ -616,6 +569,43 @@ if 'results' in st.session_state and st.session_state['results']:
                 last_signal = best_signals.iloc[-1]
                 current_price = df['Close'].iloc[-1]
                 
-                # Determinar stop distance
-                if not pd.isna(last_signal.get('stop', np.nan)):
-                    stop_distance = abs(current_price - last_signal['stop'])
+                if last_signal['signal'] != 0 and pd.notna(last_signal.get('stop')):
+                    stop_price = last_signal['stop']
+                    stop_distance = abs(current_price - stop_price)
+
+                    if stop_distance > 0:
+                        is_usd_asset = asset_info.get('currency', '').upper() == 'USD'
+                        
+                        position_size = calculate_position_size(
+                            capital=capital_brl,
+                            risk_per_trade_pct=risk_pct,
+                            stop_loss_distance=stop_distance,
+                            price=current_price,
+                            fx_rate=fx_rate if is_usd_asset else 1.0
+                        )
+                        
+                        financial_position_brl = position_size * current_price * (fx_rate if is_usd_asset else 1.0)
+                        risk_amount_brl = capital_brl * risk_pct
+                        
+                        st.info(f"Sinal da estratégia **{best_strategy}**: {'COMPRA' if last_signal['signal'] == 1 else 'VENDA'}")
+
+                        res_col1, res_col2, res_col3 = st.columns(3)
+                        res_col1.metric("📈 Tamanho da Posição (unidades)", f"{position_size:,.0f}")
+                        res_col2.metric("💰 Valor Financeiro (BRL)", f"R$ {financial_position_brl:,.2f}")
+                        res_col3.metric("🔥 Risco Financeiro (BRL)", f"R$ {risk_amount_brl:,.2f}")
+                        
+                        st.caption(f"Cálculo baseado no preço atual de {current_price:.2f} e stop em {stop_price:.2f}.")
+
+                    else:
+                        st.warning("O preço atual é igual ao preço do stop. Não é possível calcular o tamanho da posição.")
+                
+                elif last_signal['signal'] == 0:
+                     st.info("O sinal atual da melhor estratégia é **FLAT (neutro)**. Nenhum cálculo de posição é necessário.")
+
+                else:
+                    st.error(f"A estratégia '{best_strategy}' gerou um sinal, mas não forneceu um preço de stop loss. O cálculo de dimensionamento não é possível.")
+
+            else:
+                st.warning(f"A estratégia '{best_strategy}' não gerou nenhum sinal no período analisado.")
+        else:
+            st.error("Não foi possível rankear as estratégias para calcular o sizing.")
