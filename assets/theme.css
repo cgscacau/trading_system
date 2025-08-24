@@ -140,3 +140,21 @@ div[data-baseweb="alert"][role="alert"].st-emotion-cache-j6n3wz {
 div[data-baseweb="alert"][role="alert"].st-emotion-cache-j6n3wz .st-emotion-cache-1wmy9hl {
     color: #e9f5eb; /* Texto do sucesso mais claro */
 }
+
+/* ADICIONE ESTE BLOCO NO FINAL DO SEU ARQUIVO CSS */
+
+/* Força o fundo escuro no container principal da aplicação */
+[data-testid="stAppViewContainer"] > .main {
+    background-color: #0f1116; /* Cor de fundo principal escura */
+    color: #fafafa; /* Cor do texto principal clara */
+}
+
+/* Garante que os cards e outros elementos mantenham seus estilos */
+.st-emotion-cache-1y4p8pa {
+    background-color: #1a1c24; /* Cor de fundo para containers internos */
+}
+
+/* Melhora a cor do texto padrão dentro dos expanders e outros locais */
+body, .st-emotion-cache-16txtl3 {
+    color: #fafafa;
+}
