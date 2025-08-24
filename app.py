@@ -588,7 +588,7 @@ if 'results' in st.session_state and st.session_state['results']:
         else:
             st.info("Machine Learning não foi selecionado ou falhou na execução.")
     
-    with tab5:
+        with tab5:
         st.header("💼 Sizing & Gestão de Risco")
         
         # Informações do ativo
@@ -596,19 +596,23 @@ if 'results' in st.session_state and st.session_state['results']:
         
         with col1:
             st.subheader("ℹ️ Informações do Ativo")
-            st.write(f"**Nome:** {asset_info['name']}")
-            st.write(f"**Setor:** {asset_info['sector']}")
-            st.write(f"**Moeda:** {asset_info['currency']}")
+            if asset_info:
+                st.write(f"**Nome:** {asset_info.get('name', 'N/A')}")
+                st.write(f"**Setor:** {asset_info.get('sector', 'N/A')}")
+                st.write(f"**Moeda:** {asset_info.get('currency', 'N/A')}")
             st.write(f"**Preço Atual:** {df['Close'].iloc[-1]:.2f}")
         
         with col2:
             st.subheader("💱 Parâmetros de Risco")
-            st.write(f"**Capital:** R$ {capital_brl:,.2f}")
-            st.write(f"**Risco por Trade:** {risk_pct:.1%}")
-            st.write(f"**Taxa USDBRL:** {fx_rate:.4f}")
+            st.metric("Capital Total", f"R$ {capital_brl:,.2f}")
+            st.metric("Risco por Trade", f"{risk_pct:.2%}")
+            st.metric("Taxa de Câmbio USDBRL", f"{fx_rate:.4f}")
+
+        st.divider()
         
         # Cálculo de posição
-        st.subheader("📊 Cálculo de Posição")
+        st.subheader("📊 Cálculo de Posição Sugerido")
+        st.write("Baseado no sinal mais recente da estratégia com melhor ranking.")
         
         if rankings:
             best_strategy = rankings[0][0]
@@ -618,50 +622,50 @@ if 'results' in st.session_state and st.session_state['results']:
                 last_signal = best_signals.iloc[-1]
                 current_price = df['Close'].iloc[-1]
                 
-                # Determinar stop distance
-                if not pd.isna(last_signal.get('stop', np.nan)):
-                    stop_distance = abs(current_price - last_signal['stop'])
-                else:
-                    from utils.risk import calculate_atr
-                    atr = calculate_atr(df).iloc[-1]
-                    stop_distance = atr * 2
-                
-                try:
-                    # Calcular posição
-                    position_calc = calculate_position_size(
-                        capital_brl=capital_brl,
-                        risk_percent=risk_pct,
-                        fx_rate=fx_rate,
-                        asset_price=current_price,
-                        stop_distance=stop_distance,
-                        fee_percent=fee_pct,
-                        slippage_percent=slippage_pct,
-                        asset_currency=asset_info['currency']
-                    )
-                    
-                    # Exibir resultados
-                    col1, col2, col3 = st.columns(3)
-                    
-                    col1.metric("Quantidade", f"{position_calc.position_size:.2f}")
-                    col1.metric("Risco (BRL)", f"R$ {position_calc.risk_brl:.2f}")
-                    
-                    col2.metric("Exposição (USD)", f"$ {position_calc.exposure_usd:.2f}")
-                    col2.metric("Exposição (BRL)", f"R$ {position_calc.exposure_brl:.2f}")
-                    
-                    col3.metric("R:R Ratio", f"{position_calc.r_ratio:.2f}")
-                    col3.metric("Alavancagem", f"{position_calc.leverage:.2f}x")
-                    
-                    # Checklist de risco
-                    st.subheader("✅ Checklist de Risco")
-                    try:
-                        checklist = get_risk_checklist(df, current_price, stop_distance)
-                        for item, status in checklist.items():
-                            st.write(f"**{item}:** {status}")
-                    except Exception as e:
-                        st.error(f"Erro no checklist: {e}")
+                # Verifica se o sinal atual é para estar posicionado (compra ou venda)
+                if last_signal['signal'] != 0 and not pd.isna(last_signal.get('stop', np.nan)):
+                    stop_price = last_signal['stop']
+                    stop_distance = abs(current_price - stop_price)
+
+                    # Se a distância do stop for zero, evitamos divisão por zero
+                    if stop_distance > 0:
+                        is_usd_asset = asset_info.get('currency', '').upper() == 'USD'
                         
-                except Exception as e:
-                    st.error(f"Erro no cálculo de posição: {e}")
+                        # Chama a função importada para calcular o tamanho da posição
+                        position_size = calculate_position_size(
+                            capital=capital_brl,
+                            risk_per_trade_pct=risk_pct,
+                            stop_loss_distance=stop_distance,
+                            price=current_price,
+                            fx_rate=fx_rate if is_usd_asset else 1.0 # Usa o câmbio somente se o ativo for em USD
+                        )
+                        
+                        # Calcula o valor financeiro da posição e o risco
+                        financial_position_brl = position_size * current_price * (fx_rate if is_usd_asset else 1.0)
+                        risk_amount_brl = capital_brl * risk_pct
+                        
+                        st.info(f"Sinal da estratégia **{best_strategy}**: {'COMPRA' if last_signal['signal'] == 1 else 'VENDA'}")
+
+                        res_col1, res_col2, res_col3 = st.columns(3)
+                        res_col1.metric("📈 Tamanho da Posição (unidades)", f"{position_size:,.0f}")
+                        res_col2.metric("💰 Valor Financeiro (BRL)", f"R$ {financial_position_brl:,.2f}")
+                        res_col3.metric("🔥 Risco Financeiro (BRL)", f"R$ {risk_amount_brl:,.2f}")
+                        
+                        st.caption(f"Cálculo baseado no preço atual de {current_price:.2f} e stop em {stop_price:.2f}.")
+
+                    else:
+                        st.warning("O preço atual é igual ao preço do stop. Não é possível calcular o tamanho da posição.")
+                
+                elif last_signal['signal'] == 0:
+                     st.info("O sinal atual da melhor estratégia é **FLAT (neutro)**. Nenhum cálculo de posição é necessário.")
+
+                else: # Sinal de compra/venda mas sem stop definido
+                    st.error(f"A estratégia '{best_strategy}' gerou um sinal, mas não forneceu um preço de stop loss. O cálculo de dimensionamento não é possível.")
+
+            else:
+                st.warning(f"A estratégia '{best_strategy}' não gerou nenhum sinal no período analisado.")
+        else:
+            st.error("Não foi possível rankear as estratégias para calcular o sizing.")
 
 else:
     # Tela inicial
