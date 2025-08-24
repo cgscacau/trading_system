@@ -1,7 +1,3 @@
-"""
-Lab de Estratégias & Sizing BRL→USD - Aplicação Streamlit
-Versão completa com todas as estratégias implementadas e tratamento robusto de erros
-"""
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,35 +5,7 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
-# Imports dos módulos principais
-from data.loader import load_price_data, get_usd_brl_rate, get_asset_info
-from core.backtest import BacktestEngine
-from core.metrics import calculate_performance_metrics, rank_strategies, create_metrics_table
-from utils.risk import calculate_position_size, get_risk_checklist, validate_risk_parameters
-from viz.plots import (plot_candlestick_with_trades, plot_equity_curve, 
-                      plot_strategy_comparison, plot_ml_feature_importance, 
-                      plot_roc_curve, plot_monthly_returns)
-from ml.modeling import MLStrategy
-
-# Imports de todas as estratégias clássicas
-from core.strategies.moving_averages import (ema_crossover_strategy, sma_crossover_strategy,
-                                           EMA_CROSSOVER_PARAMS, SMA_CROSSOVER_PARAMS)
-from core.strategies.rsi_strategies import (rsi_ifr2_strategy, rsi_standard_strategy,
-                                          RSI_IFR2_PARAMS, RSI_STANDARD_PARAMS)
-from core.strategies.macd_strategy import (macd_strategy, MACD_PARAMS)
-from core.strategies.bollinger_bands import (bollinger_breakout_strategy, bollinger_mean_reversion_strategy,
-                                           BOLLINGER_BREAKOUT_PARAMS, BOLLINGER_MEAN_REVERSION_PARAMS)
-from core.strategies.donchian_turtle import (donchian_breakout_strategy, DONCHIAN_BREAKOUT_PARAMS)
-from core.strategies.momentum_roc import (momentum_roc_strategy, MOMENTUM_ROC_PARAMS)
-from core.strategies.breakout_strategies import (high_low_breakout_strategy, HIGH_LOW_BREAKOUT_PARAMS)
-from core.strategies.adx_dmi import (adx_dmi_strategy, ADX_DMI_PARAMS)
-from core.strategies.candle_patterns import (candle_patterns_strategy, CANDLE_PATTERNS_PARAMS)
-
-# Imports das estratégias inventadas
-from core.strategies.invented_strategies import (vol_regime_switch_strategy, meta_ensemble_strategy, pullback_trend_bias_strategy,
-                                               VOL_REGIME_SWITCH_PARAMS, META_ENSEMBLE_PARAMS, PULLBACK_TREND_BIAS_PARAMS)
-
-# Configuração da página
+# Configuração da página - DEVE SER A PRIMEIRA CHAMADA STREAMLIT NO SCRIPT
 st.set_page_config(
     page_title="Lab de Estratégias & Sizing BRL→USD",
     page_icon="📈",
@@ -49,8 +17,8 @@ st.set_page_config(
 try:
     with open('assets/theme.css', 'r', encoding='utf-8') as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-except:
-    # CSS inline como fallback para compatibilidade
+except FileNotFoundError:
+    # CSS inline como fallback para compatibilidade se o arquivo theme.css não for encontrado
     st.markdown("""
     <style>
     .metric-card {
@@ -137,6 +105,34 @@ st.markdown("""
 # 📈 Lab de Estratégias & Sizing BRL→USD
 ### Teste, compare e dimensione estratégias de trading com gestão de risco realista
 """)
+
+# Imports dos módulos principais (agora após st.set_page_config)
+from data.loader import load_price_data, get_usd_brl_rate, get_asset_info
+from core.backtest import BacktestEngine
+from core.metrics import calculate_performance_metrics, rank_strategies, create_metrics_table
+from utils.risk import calculate_position_size, get_risk_checklist, validate_risk_parameters
+from viz.plots import (plot_candlestick_with_trades, plot_equity_curve, 
+                      plot_strategy_comparison, plot_ml_feature_importance, 
+                      plot_roc_curve, plot_monthly_returns)
+from ml.modeling import MLStrategy
+
+# Imports de todas as estratégias clássicas
+from core.strategies.moving_averages import (ema_crossover_strategy, sma_crossover_strategy,
+                                           EMA_CROSSOVER_PARAMS, SMA_CROSSOVER_PARAMS)
+from core.strategies.rsi_strategies import (rsi_ifr2_strategy, rsi_standard_strategy,
+                                          RSI_IFR2_PARAMS, RSI_STANDARD_PARAMS)
+from core.strategies.macd_strategy import (macd_strategy, MACD_PARAMS)
+from core.strategies.bollinger_bands import (bollinger_breakout_strategy, bollinger_mean_reversion_strategy,
+                                           BOLLINGER_BREAKOUT_PARAMS, BOLLINGER_MEAN_REVERSION_PARAMS)
+from core.strategies.donchian_turtle import (donchian_breakout_strategy, DONCHIAN_BREAKOUT_PARAMS)
+from core.strategies.momentum_roc import (momentum_roc_strategy, MOMENTUM_ROC_PARAMS)
+from core.strategies.breakout_strategies import (high_low_breakout_strategy, HIGH_LOW_BREAKOUT_PARAMS)
+from core.strategies.adx_dmi import (adx_dmi_strategy, ADX_DMI_PARAMS)
+from core.strategies.candle_patterns import (candle_patterns_strategy, CANDLE_PATTERNS_PARAMS)
+
+# Imports das estratégias inventadas
+from core.strategies.invented_strategies import (vol_regime_switch_strategy, meta_ensemble_strategy, pullback_trend_bias_strategy,
+                                               VOL_REGIME_SWITCH_PARAMS, META_ENSEMBLE_PARAMS, PULLBACK_TREND_BIAS_PARAMS)
 
 # Sidebar - Configurações
 with st.sidebar:
@@ -301,7 +297,9 @@ def validate_inputs():
         st.error("Selecione pelo menos uma estratégia")
         return False
     
-    risk_errors = validate_risk_parameters(capital_brl, risk_pct, fx_rate, 100)
+    # As variáveis capital_brl, risk_pct, fx_rate são acessíveis globalmente
+    # pois são definidas no `with st.sidebar:` que é processado antes da chamada desta função.
+    risk_errors = validate_risk_parameters(capital_brl, risk_pct, fx_rate, 100) # 100 é um limite genérico para quantidade de ativo
     if risk_errors:
         for field, error in risk_errors.items():
             st.error(f"{field}: {error}")
@@ -588,7 +586,7 @@ if 'results' in st.session_state and st.session_state['results']:
         else:
             st.info("Machine Learning não foi selecionado ou falhou na execução.")
     
-        with tab5:
+    with tab5:
         st.header("💼 Sizing & Gestão de Risco")
         
         # Informações do ativo
@@ -596,23 +594,19 @@ if 'results' in st.session_state and st.session_state['results']:
         
         with col1:
             st.subheader("ℹ️ Informações do Ativo")
-            if asset_info:
-                st.write(f"**Nome:** {asset_info.get('name', 'N/A')}")
-                st.write(f"**Setor:** {asset_info.get('sector', 'N/A')}")
-                st.write(f"**Moeda:** {asset_info.get('currency', 'N/A')}")
+            st.write(f"**Nome:** {asset_info['name']}")
+            st.write(f"**Setor:** {asset_info['sector']}")
+            st.write(f"**Moeda:** {asset_info['currency']}")
             st.write(f"**Preço Atual:** {df['Close'].iloc[-1]:.2f}")
         
         with col2:
             st.subheader("💱 Parâmetros de Risco")
-            st.metric("Capital Total", f"R$ {capital_brl:,.2f}")
-            st.metric("Risco por Trade", f"{risk_pct:.2%}")
-            st.metric("Taxa de Câmbio USDBRL", f"{fx_rate:.4f}")
-
-        st.divider()
+            st.write(f"**Capital:** R$ {capital_brl:,.2f}")
+            st.write(f"**Risco por Trade:** {risk_pct:.1%}")
+            st.write(f"**Taxa USDBRL:** {fx_rate:.4f}")
         
         # Cálculo de posição
-        st.subheader("📊 Cálculo de Posição Sugerido")
-        st.write("Baseado no sinal mais recente da estratégia com melhor ranking.")
+        st.subheader("📊 Cálculo de Posição")
         
         if rankings:
             best_strategy = rankings[0][0]
@@ -622,100 +616,6 @@ if 'results' in st.session_state and st.session_state['results']:
                 last_signal = best_signals.iloc[-1]
                 current_price = df['Close'].iloc[-1]
                 
-                # Verifica se o sinal atual é para estar posicionado (compra ou venda)
-                if last_signal['signal'] != 0 and not pd.isna(last_signal.get('stop', np.nan)):
-                    stop_price = last_signal['stop']
-                    stop_distance = abs(current_price - stop_price)
-
-                    # Se a distância do stop for zero, evitamos divisão por zero
-                    if stop_distance > 0:
-                        is_usd_asset = asset_info.get('currency', '').upper() == 'USD'
-                        
-                        # Chama a função importada para calcular o tamanho da posição
-                        position_size = calculate_position_size(
-                            capital=capital_brl,
-                            risk_per_trade_pct=risk_pct,
-                            stop_loss_distance=stop_distance,
-                            price=current_price,
-                            fx_rate=fx_rate if is_usd_asset else 1.0 # Usa o câmbio somente se o ativo for em USD
-                        )
-                        
-                        # Calcula o valor financeiro da posição e o risco
-                        financial_position_brl = position_size * current_price * (fx_rate if is_usd_asset else 1.0)
-                        risk_amount_brl = capital_brl * risk_pct
-                        
-                        st.info(f"Sinal da estratégia **{best_strategy}**: {'COMPRA' if last_signal['signal'] == 1 else 'VENDA'}")
-
-                        res_col1, res_col2, res_col3 = st.columns(3)
-                        res_col1.metric("📈 Tamanho da Posição (unidades)", f"{position_size:,.0f}")
-                        res_col2.metric("💰 Valor Financeiro (BRL)", f"R$ {financial_position_brl:,.2f}")
-                        res_col3.metric("🔥 Risco Financeiro (BRL)", f"R$ {risk_amount_brl:,.2f}")
-                        
-                        st.caption(f"Cálculo baseado no preço atual de {current_price:.2f} e stop em {stop_price:.2f}.")
-
-                    else:
-                        st.warning("O preço atual é igual ao preço do stop. Não é possível calcular o tamanho da posição.")
-                
-                elif last_signal['signal'] == 0:
-                     st.info("O sinal atual da melhor estratégia é **FLAT (neutro)**. Nenhum cálculo de posição é necessário.")
-
-                else: # Sinal de compra/venda mas sem stop definido
-                    st.error(f"A estratégia '{best_strategy}' gerou um sinal, mas não forneceu um preço de stop loss. O cálculo de dimensionamento não é possível.")
-
-            else:
-                st.warning(f"A estratégia '{best_strategy}' não gerou nenhum sinal no período analisado.")
-        else:
-            st.error("Não foi possível rankear as estratégias para calcular o sizing.")
-
-else:
-    # Tela inicial
-    st.markdown("""
-    ## 🚀 Bem-vindo ao Lab de Estratégias!
-    
-    Este aplicativo permite testar e comparar múltiplas estratégias de trading com:
-    
-    ### ✅ **Funcionalidades Principais:**
-    - **16 Estratégias Disponíveis**: Clássicas renomadas + inventadas inovadoras
-    - **Machine Learning**: Modelos preditivos com validação temporal
-    - **Gestão de Risco**: Sizing automático BRL→USD
-    - **Backtests Robustos**: Engine sem look-ahead com custos realistas
-    - **Visualizações Interativas**: Gráficos e métricas detalhadas
-    
-    ### 🎯 **Estratégias Implementadas:**
-    
-    **Clássicas:**
-    - EMA/SMA Crossover com filtros
-    - RSI (IFR2 e padrão)
-    - MACD com histograma
-    - Bollinger Bands (breakout e mean reversion)
-    - Donchian/Turtle Trading
-    - Momentum/ROC
-    - Breakout de máximas/mínimas
-    - ADX + DMI
-    - Padrões de Candlesticks
-    
-    **Inventadas:**
-    - **Vol-Regime Switch**: Alterna entre mean-reversion e breakout
-    - **Meta-Ensemble**: Voto entre múltiplas estratégias
-    - **Pullback Trend-Bias**: Reteste de EMA com confirmação ADX
-    
-    ### 📋 **Como usar:**
-    1. Configure os parâmetros na barra lateral
-    2. Selecione as estratégias desejadas
-    3. Clique em "🚀 Executar Análise"
-    4. Explore os resultados nas abas
-    
-    **Configure os parâmetros na barra lateral e clique em "Executar Análise" para começar!**
-    """)
-    
-    # Exemplo de dados
-    st.subheader("📊 Exemplo de Dados")
-    sample_data = pd.DataFrame({
-        'Data': pd.date_range('2024-01-01', periods=5),
-        'Open': [100, 102, 101, 103, 105],
-        'High': [103, 104, 103, 106, 107],
-        'Low': [99, 101, 100, 102, 104],
-        'Close': [102, 101, 103, 105, 106],
-        'Volume': [1000000, 1200000, 800000, 1500000, 1100000]
-    })
-    st.dataframe(sample_data, use_container_width=True)
+                # Determinar stop distance
+                if not pd.isna(last_signal.get('stop', np.nan)):
+                    stop_distance = abs(current_price - last_signal['stop'])
