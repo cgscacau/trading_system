@@ -134,6 +134,25 @@ from core.strategies.candle_patterns import (candle_patterns_strategy, CANDLE_PA
 from core.strategies.invented_strategies import (vol_regime_switch_strategy, meta_ensemble_strategy, pullback_trend_bias_strategy,
                                                VOL_REGIME_SWITCH_PARAMS, META_ENSEMBLE_PARAMS, PULLBACK_TREND_BIAS_PARAMS)
 
+# Inicialização do Session State para evitar KeyErrors
+if 'results' not in st.session_state:
+    st.session_state['results'] = {}
+if 'df' not in st.session_state:
+    st.session_state['df'] = pd.DataFrame()
+if 'asset_info' not in st.session_state:
+    st.session_state['asset_info'] = {}
+if 'fx_rate' not in st.session_state:
+    st.session_state['fx_rate'] = 5.0  # Um valor padrão
+if 'capital_brl' not in st.session_state:
+    st.session_state['capital_brl'] = 100000.0
+if 'risk_pct' not in st.session_state:
+    st.session_state['risk_pct'] = 0.01
+if 'rankings' not in st.session_state:
+    st.session_state['rankings'] = []
+if 'ml_strategy' not in st.session_state:
+    st.session_state['ml_strategy'] = None
+# ---------------------------------------------
+
 # Sidebar - Configurações
 with st.sidebar:
     st.header("⚙️ Configurações")
