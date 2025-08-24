@@ -1,40 +1,9 @@
-# requirements.txt
-
-# Interface Web
-streamlit>=1.28.0
-
-# Dados Financeiros
-yfinance>=0.2.18
-
-# Manipulação de Dados
-pandas>=2.0.0
-numpy>=1.24.0
-
-# Análise Estatística e Séries Temporais
-scipy>=1.10.0
-statsmodels>=0.14.0
-
-# Modelagem de Volatilidade (GARCH)
-arch>=6.2.0
-
-# Machine Learning
-scikit-learn>=1.3.0
-
-# Visualização
-plotly>=5.15.0
-
-# Configuração
-pyyaml>=6.0.0
-
-# Utilitários para Compilação (evita erros em ambientes cloud)
-setuptools>=68.0.0
-wheel>=0.41.0
-
-# Processamento de Datas
-python-dateutil>=2.8.0
-
-# Requisições HTTP (usado pelo yfinance)
-requests>=2.31.0
-
-# Opcional: Barra de Progresso para Streamlit
-stqdm>=0.0.5
+streamlit==1.28.0
+yfinance==0.2.18
+pandas==2.0.3
+numpy==1.24.3
+scikit-learn==1.3.0
+plotly==5.15.0
+ta==0.10.2
+scipy==1.11.1
+xgboost==1.7.6
