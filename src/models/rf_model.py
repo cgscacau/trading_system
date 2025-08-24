@@ -1,5 +1,6 @@
 # src/models/rf_model.py
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
@@ -24,7 +25,7 @@ class RandomForestModel:
                 
             X_scaled = self.scaler.fit_transform(X)
             self.model.fit(X_scaled, y)
-            self.feature_names = X.columns.tolist()
+            self.feature_names = list(X.columns)
             self.is_fitted = True
             return True
             
@@ -34,10 +35,14 @@ class RandomForestModel:
     
     def predict_proba(self, X_row):
         """Prediz probabilidade de alta"""
-        if not self.is_fitted:
+        if not self.is_fitted or not self.feature_names:
             return 0.5
             
         try:
+            # Garante ordem correta das features
+            if len(X_row) != len(self.feature_names):
+                return 0.5
+                
             X_scaled = self.scaler.transform([X_row])
             prob = self.model.predict_proba(X_scaled)[0, 1]
             return float(np.clip(prob, 0.1, 0.9))
