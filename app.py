@@ -23,6 +23,42 @@ from core.strategies.moving_averages import (ema_crossover_strategy, sma_crossov
                                            EMA_CROSSOVER_PARAMS, SMA_CROSSOVER_PARAMS)
 from core.strategies.rsi_strategies import (rsi_ifr2_strategy, rsi_standard_strategy,
                                           RSI_IFR2_PARAMS, RSI_STANDARD_PARAMS)
+from core.strategies.macd_strategy import (macd_strategy, MACD_PARAMS)
+from core.strategies.bollinger_bands import (bollinger_breakout_strategy, bollinger_mean_reversion_strategy,
+                                           BOLLINGER_BREAKOUT_PARAMS, BOLLINGER_MEAN_REVERSION_PARAMS)
+from core.strategies.donchian_turtle import (donchian_breakout_strategy, DONCHIAN_BREAKOUT_PARAMS)
+from core.strategies.momentum_roc import (momentum_roc_strategy, MOMENTUM_ROC_PARAMS)
+from core.strategies.breakout_strategies import (high_low_breakout_strategy, HIGH_LOW_BREAKOUT_PARAMS)
+from core.strategies.adx_dmi import (adx_dmi_strategy, ADX_DMI_PARAMS)
+from core.strategies.candle_patterns import (candle_patterns_strategy, CANDLE_PATTERNS_PARAMS)
+from core.strategies.invented_strategies import (vol_regime_switch_strategy, meta_ensemble_strategy, pullback_trend_bias_strategy,
+                                               VOL_REGIME_SWITCH_PARAMS, META_ENSEMBLE_PARAMS, PULLBACK_TREND_BIAS_PARAMS)
+
+# Atualizar lista de estratégias na sidebar
+strategies_selected = st.multiselect(
+    "Selecione as estratégias:",
+    options=[
+        "EMA Crossover",
+        "SMA Crossover", 
+        "RSI IFR2",
+        "RSI Padrão",
+        "MACD",
+        "Bollinger Breakout",
+        "Bollinger Mean Reversion",
+        "Donchian Breakout",
+        "Momentum/ROC",
+        "High/Low Breakout",
+        "ADX + DMI",
+        "Padrões de Velas",
+        "Vol-Regime Switch",
+        "Meta-Ensemble",
+        "Pullback Trend-Bias",
+        "Machine Learning"
+    ],
+    default=["EMA Crossover", "RSI IFR2", "Meta-Ensemble"]
+)
+
+
 
 # Configuração da página
 st.set_page_config(
@@ -114,26 +150,51 @@ with st.sidebar:
 def run_strategy(strategy_name: str, df: pd.DataFrame) -> pd.DataFrame:
     """Executa uma estratégia específica"""
     
-    if strategy_name == "EMA Crossover":
-        return ema_crossover_strategy(df, EMA_CROSSOVER_PARAMS)
-    elif strategy_name == "SMA Crossover":
-        return sma_crossover_strategy(df, SMA_CROSSOVER_PARAMS)
-    elif strategy_name == "RSI IFR2":
-        return rsi_ifr2_strategy(df, RSI_IFR2_PARAMS)
-    elif strategy_name == "RSI Padrão":
-        return rsi_standard_strategy(df, RSI_STANDARD_PARAMS)
-    elif strategy_name == "Machine Learning":
-        # ML requer tratamento especial
-        ml_strategy = MLStrategy()
-        try:
-            ml_strategy.train_model(df, model_type='RandomForest')
-            return ml_strategy.generate_signals(df)
-        except Exception as e:
-            st.error(f"Erro no ML: {e}")
+    try:
+        if strategy_name == "EMA Crossover":
+            return ema_crossover_strategy(df, EMA_CROSSOVER_PARAMS)
+        elif strategy_name == "SMA Crossover":
+            return sma_crossover_strategy(df, SMA_CROSSOVER_PARAMS)
+        elif strategy_name == "RSI IFR2":
+            return rsi_ifr2_strategy(df, RSI_IFR2_PARAMS)
+        elif strategy_name == "RSI Padrão":
+            return rsi_standard_strategy(df, RSI_STANDARD_PARAMS)
+        elif strategy_name == "MACD":
+            return macd_strategy(df, MACD_PARAMS)
+        elif strategy_name == "Bollinger Breakout":
+            return bollinger_breakout_strategy(df, BOLLINGER_BREAKOUT_PARAMS)
+        elif strategy_name == "Bollinger Mean Reversion":
+            return bollinger_mean_reversion_strategy(df, BOLLINGER_MEAN_REVERSION_PARAMS)
+        elif strategy_name == "Donchian Breakout":
+            return donchian_breakout_strategy(df, DONCHIAN_BREAKOUT_PARAMS)
+        elif strategy_name == "Momentum/ROC":
+            return momentum_roc_strategy(df, MOMENTUM_ROC_PARAMS)
+        elif strategy_name == "High/Low Breakout":
+            return high_low_breakout_strategy(df, HIGH_LOW_BREAKOUT_PARAMS)
+        elif strategy_name == "ADX + DMI":
+            return adx_dmi_strategy(df, ADX_DMI_PARAMS)
+        elif strategy_name == "Padrões de Velas":
+            return candle_patterns_strategy(df, CANDLE_PATTERNS_PARAMS)
+        elif strategy_name == "Vol-Regime Switch":
+            return vol_regime_switch_strategy(df, VOL_REGIME_SWITCH_PARAMS)
+        elif strategy_name == "Meta-Ensemble":
+            return meta_ensemble_strategy(df, META_ENSEMBLE_PARAMS)
+        elif strategy_name == "Pullback Trend-Bias":
+            return pullback_trend_bias_strategy(df, PULLBACK_TREND_BIAS_PARAMS)
+        elif strategy_name == "Machine Learning":
+            ml_strategy = MLStrategy()
+            try:
+                ml_strategy.train_model(df, model_type='RandomForest')
+                st.session_state['ml_strategy'] = ml_strategy
+                return ml_strategy.generate_signals(df)
+            except Exception as e:
+                st.error(f"Erro no ML: {e}")
+                return pd.DataFrame(columns=['signal', 'stop', 'target'])
+        else:
             return pd.DataFrame(columns=['signal', 'stop', 'target'])
-    else:
+    except Exception as e:
+        st.error(f"Erro em {strategy_name}: {e}")
         return pd.DataFrame(columns=['signal', 'stop', 'target'])
-
 # Execução principal
 if run_analysis:
     if not ticker:
