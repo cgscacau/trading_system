@@ -33,14 +33,10 @@ STRATEGIES = {
 @st.cache_data
 def load_data(ticker, start, end):
     try:
-        # Usamos auto_adjust=True para já ter os preços ajustados a dividendos
         data = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
         if data.empty:
-            # Não mostra erro, apenas retorna None para o screener continuar
             return None
         
-        # --- CORREÇÃO DEFINITIVA PARA NOMES DE COLUNAS ---
-        # Lida com nomes que são strings ('Close') ou tuplas ('Close', '')
         new_cols = []
         for col in data.columns:
             if isinstance(col, tuple):
@@ -56,28 +52,17 @@ def load_data(ticker, start, end):
         return None
 
 def calculate_performance(results_df):
-    """Calcula as métricas de performance de um backtest."""
     trades = results_df[results_df['signal'] != results_df['signal'].shift(1)]
     trades = trades[trades['signal'] != 0]
 
     if len(trades) < 2:
-        return {
-            "Total Return (%)": 0, "Win Rate (%)": 0, "Profit Factor": 0,
-            "Total Trades": len(trades), "Max Drawdown (%)": 0
-        }
+        return {"Total Return (%)": 0, "Win Rate (%)": 0, "Profit Factor": "N/A", "Total Trades": 0, "Max Drawdown (%)": 0}
 
-    # Calcula o retorno percentual para cada mudança de posição
     trade_returns = trades['Close'].pct_change().dropna()
-    
-    # Ajusta para considerar apenas os trades de fechamento
-    # Sinal de compra (1) seguido de venda (-1) é um trade, e vice-versa.
     actual_trades = trade_returns[trades['signal'].shift(1) != trades['signal']].iloc[1:]
 
     if actual_trades.empty:
-        return {
-            "Total Return (%)": 0, "Win Rate (%)": 0, "Profit Factor": "N/A",
-            "Total Trades": 0, "Max Drawdown (%)": 0
-        }
+        return {"Total Return (%)": 0, "Win Rate (%)": 0, "Profit Factor": "N/A", "Total Trades": 0, "Max Drawdown (%)": 0}
 
     wins = actual_trades[actual_trades > 0]
     losses = actual_trades[actual_trades < 0]
@@ -103,7 +88,6 @@ def calculate_performance(results_df):
     }
 
 # --- INTERFACE DO USUÁRIO ---
-
 st.sidebar.header("Modo de Operação")
 operation_mode = st.sidebar.selectbox("Escolha o modo", ["Backtest de Ativo Único", "Screener de Múltiplos Ativos"])
 
@@ -208,5 +192,6 @@ else: # Modo Screener
                                          .format({
                                              "Retorno Total (%)": "{:.2f}%",
                                              "Win Rate (%)": "{:.2f}%",
-                                             "Profit Factor": "{:.2f}"
+                                             # CORREÇÃO FINAL AQUI
+                                             "Profit Factor": lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x
                                          }), use_container_width=True, height=len(results_df)*38)
