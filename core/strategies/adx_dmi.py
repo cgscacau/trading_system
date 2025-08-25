@@ -20,7 +20,7 @@ def adx_dmi_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     signals.loc[strong_trend & (dmi_pos > dmi_neg), 'signal'] = 1
     signals.loc[strong_trend & (dmi_neg > dmi_pos), 'signal'] = -1
 
-    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.98 if signals.loc[r.name, 'signal'] == 1 else r['High'] * 1.02, axis=1)
+    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.98 if signals.loc[r.name]['signal'] == 1 else r['High'] * 1.02, axis=1)
     signals['target'] = pd.NA
     
     return signals[['signal', 'stop', 'target']]
