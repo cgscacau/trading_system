@@ -131,8 +131,8 @@ from core.strategies.adx_dmi import (adx_dmi_strategy, ADX_DMI_PARAMS)
 from core.strategies.candle_patterns import (candle_patterns_strategy, CANDLE_PATTERNS_PARAMS)
 
 # Imports das estratégias inventadas
-from core.strategies.invented_strategies import (vol_regime_switch_strategy, meta_ensemble_strategy, pullback_trend_bias_strategy,
-                                               VOL_REGIME_SWITCH_PARAMS, META_ENSEMBLE_PARAMS, PULLBACK_TREND_BIAS_PARAMS)
+from core.strategies.invented_strategies import (vol_regime_switch_strategy, meta_ensemble_strategy, pullback_trend_bias_strategy)
+                                               
 
 # Inicialização do Session State para evitar KeyErrors
 if 'results' not in st.session_state:
