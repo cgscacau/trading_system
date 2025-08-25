@@ -1,5 +1,5 @@
 import pandas as pd
-from ta.volatility import ATRIndicator
+from ta.volatility import AverageTrueRange
 from ta.trend import SMAIndicator, EMAIndicator
 from ta.momentum import RSIIndicator
 
