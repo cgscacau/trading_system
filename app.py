@@ -19,15 +19,12 @@ st.markdown("Teste, compare e dimensione estratégias de trading com gestão de 
 STRATEGIES = {
     "Cruzamento de Médias Móveis (SMA)": sma_crossover_strategy, "Cruzamento de Médias Móveis (EMA)": ema_crossover_strategy,
     "Índice de Força Relativa (RSI)": rsi_strategy, "MACD": macd_strategy,
-    "Reversão à Média (Bandas de Bollinger)": bollinger_mean_reversion_strategy, "Rompimento (Bandas de Bollinger)": bollinger_breakout_strategy,
-    "Rompimento (Canais de Donchian)": donchian_breakout_strategy, "ADX + DMI": adx_dmi_strategy,
-    "Meta-Ensemble (EMA+RSI)": meta_ensemble_strategy, "Pullback em Tendência": pullback_trend_bias_strategy,
-    "Switch de Regime de Volatilidade": vol_regime_switch_strategy,
+    # Adicione outras estratégias aqui...
 }
 PRESET_TICKERS = {
-    "Ações Brasileiras (IBOV)": "PETR4.SA\nVALE3.SA\nITUB4.SA\nBBDC4.SA\nBBAS3.SA\nITSA4.SA\nWEGE3.SA\nJBSS3.SA",
-    "Criptomoedas": "BTC-USD\nETH-USD\nSOL-USD\nXRP-USD\nDOGE-USD",
-    "Ações Americanas (Tech)": "AAPL\nMSFT\nGOOGL\nAMZN\nNVDA\nTSLA",
+    "Ações Brasileiras (IBOV)": "PETR4.SA\nVALE3.SA\nITUB4.SA\nBBDC4.SA\nBBAS3.SA",
+    "Criptomoedas": "BTC-USD\nETH-USD\nSOL-USD",
+    "Ações Americanas (Tech)": "AAPL\nMSFT\nGOOGL\nAMZN\nNVDA",
 }
 
 # --- FUNÇÕES DE LÓGICA ---
@@ -88,14 +85,61 @@ if operation_mode == "Backtest de Ativo Único":
     end_date = st.sidebar.date_input("Data de Fim", date.today())
     trade_direction = st.sidebar.selectbox("Direção do Trade", ["Comprado e Vendido", "Apenas Comprado", "Apenas Vendido"])
     selected_strategy_name = st.sidebar.selectbox("Escolha a Estratégia", list(STRATEGIES.keys()))
+
     st.sidebar.header("Parâmetros da Estratégia")
     if "SMA" in selected_strategy_name or "EMA" in selected_strategy_name:
         params['short_window'] = st.sidebar.number_input("Janela Curta", value=20, min_value=1, step=1)
         params['long_window'] = st.sidebar.number_input("Janela Longa", value=50, min_value=1, step=1)
-    # ... (código dos outros parâmetros) ...
+    # Adicione mais `elif` para outras estratégias...
+    
     if st.sidebar.button("Executar Backtest"):
-        # ... (código do backtest único) ...
-        pass
+        data = load_data(ticker, start_date, end_date)
+        if data is not None and not data.empty:
+            st.header(f"Resultados para {ticker} com a estratégia '{selected_strategy_name}'")
+            strategy_function = STRATEGIES[selected_strategy_name]
+            results = strategy_function(data.copy(), **params)
+            
+            if trade_direction == "Apenas Comprado": results.loc[results['signal'] == -1, 'signal'] = 0
+            elif trade_direction == "Apenas Vendido": results.loc[results['signal'] == 1, 'signal'] = 0
+
+            st.subheader("Resumo da Performance Histórica")
+            performance = calculate_performance(results.copy())['metrics']
+            cols = st.columns(5)
+            cols[0].metric("Retorno Total", f"{performance['Total Return (%)']:.2f}%")
+            cols[1].metric("Win Rate", f"{performance['Win Rate (%)']:.2f}%")
+            cols[2].metric("Profit Factor", f"{performance['Profit Factor']:.2f}" if isinstance(performance['Profit Factor'], (int, float)) else "N/A")
+            cols[3].metric("Nº de Trades", performance['Total Trades'])
+            cols[4].metric("Max Drawdown", f"{performance['Max Drawdown (%)']:.2f}%")
+
+            st.subheader("Sinal Atual")
+            last_row = results.iloc[-1]
+            if last_row['signal'] == 1:
+                st.success(f"🟢 SINAL DE COMPRA ATIVO")
+                st.markdown(f"**Entrada:** `{last_row['Close']:.2f}` | **Stop:** `{last_row['stop']:.2f}` | **Alvo:** `{last_row['target']:.2f}`")
+            elif last_row['signal'] == -1:
+                st.error(f"🔴 SINAL DE VENDA ATIVO")
+                st.markdown(f"**Entrada:** `{last_row['Close']:.2f}` | **Stop:** `{last_row['stop']:.2f}` | **Alvo:** `{last_row['target']:.2f}`")
+            else:
+                st.info("⚪ SINAL NEUTRO / AGUARDAR")
+
+            st.subheader("Gráfico de Operações")
+            fig = go.Figure()
+            fig.add_trace(go.Candlestick(x=results.index, open=results['Open'], high=results['High'], low=results['Low'], close=results['Close'], name='Preço'))
+            trades = results[(results['signal'] != 0) & (results['signal'] != results['signal'].shift(1))]
+            buy_trades = trades[trades['signal'] == 1]
+            sell_trades = trades[trades['signal'] == -1]
+            fig.add_trace(go.Scatter(x=buy_trades.index, y=buy_trades['Close'], mode='markers', marker=dict(color='green', symbol='circle', size=12, line=dict(color='white', width=2)), name="Entrada Compra"))
+            fig.add_trace(go.Scatter(x=sell_trades.index, y=sell_trades['Close'], mode='markers', marker=dict(color='red', symbol='circle', size=12, line=dict(color='white', width=2)), name="Entrada Venda"))
+            
+            if last_row['signal'] != 0:
+                fig.add_hline(y=last_row['stop'], line_dash="dash", line_color="orange", annotation_text="STOP ATUAL", annotation_position="bottom right")
+                fig.add_hline(y=last_row['target'], line_dash="dash", line_color="cyan", annotation_text="ALVO ATUAL", annotation_position="top right")
+
+            fig.update_layout(title=f"Sinais de Trading para {ticker}", xaxis_title="Data", yaxis_title="Preço", xaxis_rangeslider_visible=False)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("Ver dados e operações"):
+                st.dataframe(results)
 
 # MODO 2: SCREENER DE MÚLTIPLOS ATIVOS
 elif operation_mode == "Screener de Múltiplos Ativos":
@@ -108,11 +152,39 @@ elif operation_mode == "Screener de Múltiplos Ativos":
         params = {
             'short_window': st.number_input("Janela Curta (SMA/EMA)", value=20),
             'long_window': st.number_input("Janela Longa (SMA/EMA)", value=50),
-            # ... (código dos outros parâmetros) ...
+            # Adicione outros parâmetros globais aqui...
         }
     if st.sidebar.button("Executar Screener"):
-        # ... (código do screener) ...
-        pass
+        tickers = [t.strip().upper() for t in tickers_input.split('\n') if t.strip()]
+        st.header("Resultados do Screener")
+        all_results, failed_tickers = [], []
+        progress_bar = st.progress(0, text="Rastreando ativos...")
+        for i, ticker in enumerate(tickers):
+            data = load_data(ticker, start_date_scr, end_date_scr)
+            if data is not None and not data.empty:
+                for strategy_name, strategy_func in STRATEGIES.items():
+                    results = strategy_func(data.copy(), **params)
+                    performance = calculate_performance(results.copy())['metrics']
+                    last_signal = results['signal'].iloc[-1]
+                    all_results.append({"Ativo": ticker, "Estratégia": strategy_name, "Sinal Atual": "COMPRA" if last_signal == 1 else "VENDA" if last_signal == -1 else "NEUTRO",
+                                        "Retorno Total (%)": performance['Total Return (%)'], "Win Rate (%)": performance['Win Rate (%)'],
+                                        "Profit Factor": performance['Profit Factor'], "Nº Trades": performance['Total Trades']})
+            else: failed_tickers.append(ticker)
+            progress_bar.progress((i + 1) / len(tickers), text=f"Analisando {ticker}...")
+        
+        progress_bar.empty()
+        if failed_tickers: st.warning(f"Não foi possível carregar dados para: {', '.join(failed_tickers)}")
+        
+        if all_results:
+            results_df = pd.DataFrame(all_results)
+            st.subheader("Tabela de Oportunidades")
+            st.info("Clique nos cabeçalhos das colunas para ordenar.")
+            def highlight_signals(s):
+                return ['background-color: #2E7D32' if v == 'COMPRA' else ('background-color: #C62828' if v == 'VENDA' else '') for v in s]
+            st.dataframe(results_df.style.apply(highlight_signals, subset=['Sinal Atual'])
+                                         .format({"Retorno Total (%)": "{:.2f}%", "Win Rate (%)": "{:.2f}%",
+                                                  "Profit Factor": lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x
+                                         }), use_container_width=True)
 
 # MODO 3: OTIMIZADOR WALK-FORWARD
 elif operation_mode == "Otimizador Walk-Forward":
@@ -130,7 +202,7 @@ elif operation_mode == "Otimizador Walk-Forward":
     if "SMA" in strategy_opt_name or "EMA" in strategy_opt_name:
         param_ranges['short_window'] = st.sidebar.slider("Intervalo Janela Curta", 5, 40, (10, 20), step=5)
         param_ranges['long_window'] = st.sidebar.slider("Intervalo Janela Longa", 40, 100, (40, 60), step=5)
-    # ... (código dos outros parâmetros) ...
+    # Adicione mais `elif` para outras estratégias...
     
     if st.sidebar.button("Iniciar Otimização Walk-Forward"):
         full_data = load_data(ticker_opt, start_date_opt, end_date_opt)
@@ -185,12 +257,13 @@ elif operation_mode == "Otimizador Walk-Forward":
             final_performance = calculate_performance(final_df)['metrics']
             cols = st.columns(5)
             cols[0].metric("Retorno Total", f"{final_performance['Total Return (%)']:.2f}%")
-            # ... (código das outras métricas) ...
+            cols[1].metric("Win Rate", f"{final_performance['Win Rate (%)']:.2f}%")
+            cols[2].metric("Profit Factor", f"{final_performance['Profit Factor']:.2f}" if isinstance(final_performance['Profit Factor'], (int, float)) else "N/A")
+            cols[3].metric("Nº de Trades", final_performance['Total Trades'])
+            cols[4].metric("Max Drawdown", f"{final_performance['Max Drawdown (%)']:.2f}%")
 
             st.subheader("Resumo da Otimização por Período")
             summary_df = pd.DataFrame(walk_forward_summary)
             # CORREÇÃO FINAL: Converte a coluna 'Profit Factor' para numérica antes de exibir
             summary_df['Profit Factor'] = pd.to_numeric(summary_df['Profit Factor'], errors='coerce')
             st.dataframe(summary_df.style.format(precision=2), use_container_width=True)
-
-# Resto do código para os outros modos (Backtest e Screener)...
