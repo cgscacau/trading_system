@@ -16,7 +16,7 @@ def bollinger_breakout_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     signals.loc[df_s['Close'] > bb_upper, 'signal'] = 1
     signals.loc[df_s['Close'] < bb_lower, 'signal'] = -1
     
-    signals['stop'] = df_s.apply(lambda r: bb_lower[r.name] if signals.loc[r.name, 'signal'] == 1 else bb_upper[r.name], axis=1)
+    signals['stop'] = bb_lower.where(signals['signal'] == 1, bb_upper)
     signals['target'] = pd.NA
 
     return signals[['signal', 'stop', 'target']]
@@ -34,7 +34,7 @@ def bollinger_mean_reversion_strategy(df: pd.DataFrame, params: dict) -> pd.Data
     signals.loc[df_s['Close'] < bb_lower, 'signal'] = 1
     signals.loc[df_s['Close'] > bb_upper, 'signal'] = -1
     
-    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.98 if signals.loc[r.name, 'signal'] == 1 else r['High'] * 1.02, axis=1)
+    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.98 if signals.loc[r.name]['signal'] == 1 else r['High'] * 1.02, axis=1)
     signals['target'] = bb_ma
 
     return signals[['signal', 'stop', 'target']]
