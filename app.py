@@ -4,47 +4,26 @@ import yfinance as yf
 import plotly.graph_objects as go
 from datetime import date
 
-# --- Bloco de Importação das Estratégias ---
-# A sintaxe aqui está 100% correta.
-# Certifique-se de que os seus ficheiros de estratégias estão no caminho certo.
-# Ex: trading_system/core/strategies/invented_strategies.py
+# --- Bloco de Importação das Estratégias (Versão Simplificada e Corrigida) ---
 
-try:
-    # Importa das estratégias que você inventou
-    from core.strategies.invented_strategies import (
-        vol_regime_switch_strategy, 
-        meta_ensemble_strategy, 
-        pullback_trend_bias_strategy
-    )
+# Importa das estratégias que você inventou
+from core.strategies.invented_strategies import (
+    vol_regime_switch_strategy, 
+    meta_ensemble_strategy, 
+    pullback_trend_bias_strategy
+)
 
-    # Importa das estratégias padrão que criámos
-    from core.strategies.standard_strategies import (
-        sma_crossover_strategy,
-        ema_crossover_strategy,
-        rsi_strategy,
-        macd_strategy,
-        bollinger_mean_reversion_strategy,
-        bollinger_breakout_strategy,
-        adx_dmi_strategy,
-        donchian_breakout_strategy
-    )
-except ImportError as e:
-    st.error(f"""
-    **Erro de Importação:** Não foi possível encontrar os ficheiros de estratégias.
-    Verifique se a sua estrutura de pastas está correta:
-    
-    trading_system/
-    ├── app.py
-    └── core/
-        └── strategies/
-            ├── __init__.py
-            ├── invented_strategies.py
-            └── standard_strategies.py
-            
-    Erro detalhado: {e}
-    """)
-    st.stop()
-
+# Importa das estratégias padrão que criámos
+from core.strategies.standard_strategies import (
+    sma_crossover_strategy,
+    ema_crossover_strategy,
+    rsi_strategy,
+    macd_strategy,
+    bollinger_mean_reversion_strategy,
+    bollinger_breakout_strategy,
+    adx_dmi_strategy,
+    donchian_breakout_strategy
+)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Lab de Estratégias de Trading", layout="wide")
