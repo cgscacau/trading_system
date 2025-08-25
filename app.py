@@ -39,16 +39,19 @@ selected_strategy_name = st.sidebar.selectbox("Escolha a Estratégia", list(STRA
 # --- PARÂMETROS DINÂMICOS DAS ESTRATÉGIAS ---
 st.sidebar.header("Parâmetros da Estratégia")
 params = {}
+# Adicione `elif` para outras estratégias que você queira customizar
 if selected_strategy_name == "Cruzamento de Médias Móveis (SMA)":
-    params['short_window'] = st.sidebar.number_input("Janela Curta", value=20, min_value=1)
-    params['long_window'] = st.sidebar.number_input("Janela Longa", value=50, min_value=1)
+    params['short_window'] = st.sidebar.number_input("Janela Curta", value=20, min_value=1, step=1)
+    params['long_window'] = st.sidebar.number_input("Janela Longa", value=50, min_value=1, step=1)
+elif selected_strategy_name == "Cruzamento de Médias Móveis (EMA)":
+    params['short_window'] = st.sidebar.number_input("Janela Curta (EMA)", value=12, min_value=1, step=1)
+    params['long_window'] = st.sidebar.number_input("Janela Longa (EMA)", value=26, min_value=1, step=1)
 elif selected_strategy_name == "Índice de Força Relativa (RSI)":
-    params['window'] = st.sidebar.number_input("Janela do RSI", value=14, min_value=1)
-    params['buy_level'] = st.sidebar.number_input("Nível de Compra (Sobrevenda)", value=30, min_value=1)
-    params['sell_level'] = st.sidebar.number_input("Nível de Venda (Sobrecompra)", value=70, min_value=1)
-# Adicione `elif` para outras estratégias que você queira customizar...
+    params['window'] = st.sidebar.number_input("Janela do RSI", value=14, min_value=1, step=1)
+    params['buy_level'] = st.sidebar.number_input("Nível de Compra (Sobrevenda)", value=30, min_value=1, max_value=100)
+    params['sell_level'] = st.sidebar.number_input("Nível de Venda (Sobrecompra)", value=70, min_value=1, max_value=100)
 
-# --- FUNÇÃO PARA CARREGAR E PREPARAR DADOS (CORRIGIDA) ---
+# --- FUNÇÃO PARA CARREGAR E PREPARAR DADOS (CORREÇÃO FINAL) ---
 @st.cache_data
 def load_data(ticker, start, end):
     try:
@@ -57,9 +60,16 @@ def load_data(ticker, start, end):
             st.error(f"Não foi possível obter dados para o ativo '{ticker}'. Verifique o símbolo.")
             return None
         
-        # --- CORREÇÃO IMPORTANTE AQUI ---
-        # Padroniza os nomes das colunas para ter a primeira letra maiúscula
-        data.columns = [col.capitalize() for col in data.columns]
+        # --- CORREÇÃO FINAL AQUI ---
+        # Esta lógica lida com nomes de colunas que são strings ou tuplas.
+        new_cols = []
+        for col in data.columns:
+            if isinstance(col, tuple):
+                new_cols.append(col[0].capitalize())
+            else:
+                new_cols.append(col.capitalize())
+        data.columns = new_cols
+        
         return data
         
     except Exception as e:
@@ -78,7 +88,6 @@ if st.sidebar.button("Executar Backtest"):
             st.subheader(f"Resultados para {ticker} com a estratégia '{selected_strategy_name}'")
             
             strategy_function = STRATEGIES[selected_strategy_name]
-            # Passa os parâmetros dinâmicos para a função
             results = strategy_function(data.copy(), **params)
 
             # --- VISUALIZAÇÃO DOS RESULTADOS ---
