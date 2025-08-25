@@ -4,11 +4,9 @@ import yfinance as yf
 import plotly.graph_objects as go
 from datetime import date
 
-# --- CORREÇÃO DA IMPORTAÇÃO ---
-# Esta é a correção principal para o seu SyntaxError.
-# Note que não há vírgula no final e o parêntese fecha a lista.
-# Assumindo que os ficheiros estão em core/strategies/
-# Se estiverem noutro sítio, ajuste o caminho.
+# --- Bloco de Importação das Estratégias ---
+# Garanta que este bloco substitui completamente as suas importações anteriores.
+# A sintaxe com parênteses está correta aqui.
 
 # Importa das estratégias que você inventou
 from core.strategies.invented_strategies import (
