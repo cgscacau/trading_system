@@ -60,20 +60,20 @@ def calculate_performance(results_df):
 st.sidebar.header("Modo de Operação")
 operation_mode = st.sidebar.selectbox("Escolha o modo", ["Backtest de Ativo Único", "Screener de Múltiplos Ativos"])
 
+# --- PARÂMETROS GLOBAIS ---
+params = {}
+
 if operation_mode == "Backtest de Ativo Único":
     st.sidebar.header("Parâmetros do Backtest")
     preset_selection = st.sidebar.selectbox("Listas Predefinidas", list(PRESET_TICKERS.keys()))
     ticker = st.sidebar.text_input("Ativo", PRESET_TICKERS[preset_selection].split('\n')[0])
     start_date = st.sidebar.date_input("Data de Início", date(2022, 1, 1))
     end_date = st.sidebar.date_input("Data de Fim", date.today())
-    
-    # NOVO: Seletor de Direção do Trade
     trade_direction = st.sidebar.selectbox("Direção do Trade", ["Comprado e Vendido", "Apenas Comprado", "Apenas Vendido"])
-    
     selected_strategy_name = st.sidebar.selectbox("Escolha a Estratégia", list(STRATEGIES.keys()))
 
     st.sidebar.header("Parâmetros da Estratégia")
-    params = {}
+    # --- PAINEL DE PARÂMETROS DINÂMICO COMPLETO ---
     if "SMA" in selected_strategy_name or "EMA" in selected_strategy_name:
         params['short_window'] = st.sidebar.number_input("Janela Curta", value=20, min_value=1, step=1)
         params['long_window'] = st.sidebar.number_input("Janela Longa", value=50, min_value=1, step=1)
@@ -81,7 +81,19 @@ if operation_mode == "Backtest de Ativo Único":
         params['window'] = st.sidebar.number_input("Janela do RSI", value=14, min_value=1, step=1)
         params['buy_level'] = st.sidebar.number_input("Nível de Compra", value=30, min_value=1, max_value=100)
         params['sell_level'] = st.sidebar.number_input("Nível de Venda", value=70, min_value=1, max_value=100)
-
+    elif "MACD" in selected_strategy_name:
+        params['window_fast'] = st.sidebar.number_input("Janela Rápida", value=12, min_value=1, step=1)
+        params['window_slow'] = st.sidebar.number_input("Janela Lenta", value=26, min_value=1, step=1)
+        params['window_sign'] = st.sidebar.number_input("Janela do Sinal", value=9, min_value=1, step=1)
+    elif "Bollinger" in selected_strategy_name:
+        params['window'] = st.sidebar.number_input("Janela", value=20, min_value=1, step=1)
+        params['window_dev'] = st.sidebar.number_input("Desvios Padrão", value=2.0, min_value=0.1, step=0.1)
+    elif "Donchian" in selected_strategy_name:
+        params['window'] = st.sidebar.number_input("Janela", value=20, min_value=1, step=1)
+    elif "ADX" in selected_strategy_name:
+        params['window'] = st.sidebar.number_input("Janela", value=14, min_value=1, step=1)
+        params['adx_threshold'] = st.sidebar.number_input("Limiar do ADX", value=25, min_value=1)
+    
     if st.sidebar.button("Executar Backtest"):
         data = load_data(ticker, start_date, end_date)
         if data is not None and not data.empty:
@@ -89,11 +101,8 @@ if operation_mode == "Backtest de Ativo Único":
             strategy_function = STRATEGIES[selected_strategy_name]
             results = strategy_function(data.copy(), **params)
             
-            # NOVO: Lógica para filtrar sinais de acordo com a direção escolhida
-            if trade_direction == "Apenas Comprado":
-                results.loc[results['signal'] == -1, 'signal'] = 0
-            elif trade_direction == "Apenas Vendido":
-                results.loc[results['signal'] == 1, 'signal'] = 0
+            if trade_direction == "Apenas Comprado": results.loc[results['signal'] == -1, 'signal'] = 0
+            elif trade_direction == "Apenas Vendido": results.loc[results['signal'] == 1, 'signal'] = 0
 
             st.subheader("Resumo da Performance Histórica")
             performance = calculate_performance(results)
@@ -140,14 +149,18 @@ else: # Modo Screener
     start_date_scr = st.sidebar.date_input("Data de Início", date(2022, 1, 1))
     end_date_scr = st.sidebar.date_input("Data de Fim", date.today())
     
-    # NOVO: Parâmetros Globais para o Screener
-    with st.sidebar.expander("Parâmetros Globais das Estratégias"):
-        screener_params = {
+    with st.sidebar.expander("Parâmetros Globais das Estratégias (Screener)"):
+        params = {
             'short_window': st.number_input("Janela Curta (SMA/EMA)", value=20, min_value=1, step=1),
             'long_window': st.number_input("Janela Longa (SMA/EMA)", value=50, min_value=1, step=1),
-            'window': st.number_input("Janela (RSI)", value=14, min_value=1, step=1),
+            'window': st.number_input("Janela (RSI/Bollinger/Donchian/ADX)", value=20, min_value=1, step=1),
             'buy_level': st.number_input("Nível de Compra (RSI)", value=30, min_value=1, max_value=100),
             'sell_level': st.number_input("Nível de Venda (RSI)", value=70, min_value=1, max_value=100),
+            'window_fast': st.number_input("Janela Rápida (MACD)", value=12, min_value=1, step=1),
+            'window_slow': st.number_input("Janela Lenta (MACD)", value=26, min_value=1, step=1),
+            'window_sign': st.number_input("Janela do Sinal (MACD)", value=9, min_value=1, step=1),
+            'window_dev': st.number_input("Desvios Padrão (Bollinger)", value=2.0, min_value=0.1, step=0.1),
+            'adx_threshold': st.number_input("Limiar do ADX", value=25, min_value=1),
         }
 
     if st.sidebar.button("Executar Screener"):
@@ -161,7 +174,7 @@ else: # Modo Screener
             data = load_data(ticker, start_date_scr, end_date_scr)
             if data is not None and not data.empty:
                 for strategy_name, strategy_func in STRATEGIES.items():
-                    results = strategy_func(data.copy(), **screener_params)
+                    results = strategy_func(data.copy(), **params)
                     performance = calculate_performance(results)
                     last_signal = results['signal'].iloc[-1]
                     all_results.append({"Ativo": ticker, "Estratégia": strategy_name, "Sinal Atual": "COMPRA" if last_signal == 1 else "VENDA" if last_signal == -1 else "NEUTRO",
