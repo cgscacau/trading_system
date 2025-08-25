@@ -1,4 +1,5 @@
 import pandas as pd
+# --- CORREÇÃO APLICADA AQUI ---
 from ta.volatility import AverageTrueRange
 from ta.trend import SMAIndicator, EMAIndicator
 from ta.momentum import RSIIndicator
@@ -8,7 +9,8 @@ def vol_regime_switch_strategy(data: pd.DataFrame):
     Estratégia que alterna entre seguir a tendência e reverter à média
     com base no regime de volatilidade do mercado.
     """
-    atr_indicator = ATRIndicator(
+    # --- CORREÇÃO APLICADA AQUI ---
+    atr_indicator = AverageTrueRange(
         high=data['High'],
         low=data['Low'],
         close=data['Close'],
