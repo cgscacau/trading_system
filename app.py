@@ -60,7 +60,6 @@ def calculate_performance(results_df):
 st.sidebar.header("Modo de Operação")
 operation_mode = st.sidebar.selectbox("Escolha o modo", ["Backtest de Ativo Único", "Screener de Múltiplos Ativos"])
 
-# --- PARÂMETROS GLOBAIS ---
 params = {}
 
 if operation_mode == "Backtest de Ativo Único":
@@ -73,7 +72,6 @@ if operation_mode == "Backtest de Ativo Único":
     selected_strategy_name = st.sidebar.selectbox("Escolha a Estratégia", list(STRATEGIES.keys()))
 
     st.sidebar.header("Parâmetros da Estratégia")
-    # --- PAINEL DE PARÂMETROS DINÂMICO COMPLETO ---
     if "SMA" in selected_strategy_name or "EMA" in selected_strategy_name:
         params['short_window'] = st.sidebar.number_input("Janela Curta", value=20, min_value=1, step=1)
         params['long_window'] = st.sidebar.number_input("Janela Longa", value=50, min_value=1, step=1)
@@ -127,10 +125,14 @@ if operation_mode == "Backtest de Ativo Único":
             st.subheader("Gráfico de Operações")
             fig = go.Figure()
             fig.add_trace(go.Candlestick(x=results.index, open=results['Open'], high=results['High'], low=results['Low'], close=results['Close'], name='Preço'))
+            
+            # --- CORREÇÃO FINAL NO PLOT DO GRÁFICO ---
             trades = results[(results['signal'] != 0) & (results['signal'] != results['signal'].shift(1))]
-            for i, trade_entry in trades.iterrows():
-                color = "green" if trade_entry['signal'] == 1 else "red"
-                fig.add_trace(go.Scatter(x=[trade_entry.name], y=[trade_entry['Close']], mode='markers', marker=dict(color=color, symbol='circle', size=12, line=dict(color='white', width=2)), name=f"Entrada {i+1}"))
+            buy_trades = trades[trades['signal'] == 1]
+            sell_trades = trades[trades['signal'] == -1]
+
+            fig.add_trace(go.Scatter(x=buy_trades.index, y=buy_trades['Close'], mode='markers', marker=dict(color='green', symbol='circle', size=12, line=dict(color='white', width=2)), name="Entrada Compra"))
+            fig.add_trace(go.Scatter(x=sell_trades.index, y=sell_trades['Close'], mode='markers', marker=dict(color='red', symbol='circle', size=12, line=dict(color='white', width=2)), name="Entrada Venda"))
             
             if last_row['signal'] != 0:
                 fig.add_hline(y=last_row['stop'], line_dash="dash", line_color="orange", annotation_text="STOP ATUAL", annotation_position="bottom right")
