@@ -6,21 +6,8 @@ from datetime import date
 
 # --- Bloco de Importação das Estratégias ---
 
-# Importa das estratégias que você inventou
-from core.strategies.invented_strategies import vol_regime_switch_strategy
-from core.strategies.invented_strategies import meta_ensemble_strategy
-from core.strategies.invented_strategies import pullback_trend_bias_strategy
-
-# Importa das estratégias padrão
-from core.strategies.standard_strategies import sma_crossover_strategy
-from core.strategies.standard_strategies import ema_crossover_strategy
-from core.strategies.standard_strategies import rsi_strategy
-from core.strategies.standard_strategies import macd_strategy
-from core.strategies.standard_strategies import bollinger_mean_reversion_strategy
-from core.strategies.standard_strategies import bollinger_breakout_strategy
-from core.strategies.standard_strategies import adx_dmi_strategy
-from core.strategies.standard_strategies import donchian_breakout_strategy
-
+from core.strategies.invented_strategies import vol_regime_switch_strategy, meta_ensemble_strategy, pullback_trend_bias_strategy
+from core.strategies.standard_strategies import sma_crossover_strategy, ema_crossover_strategy, rsi_strategy, macd_strategy, bollinger_mean_reversion_strategy, bollinger_breakout_strategy, adx_dmi_strategy, donchian_breakout_strategy
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Lab de Estratégias de Trading", layout="wide")
@@ -44,12 +31,24 @@ STRATEGIES = {
 
 # --- BARRA LATERAL (INPUTS DO UTILIZADOR) ---
 st.sidebar.header("Parâmetros do Backtest")
-ticker = st.sidebar.text_input("Ativo (ex: PETR4.SA, BTC-USD, USDBRL=X)", "PETR4.SA")
+ticker = st.sidebar.text_input("Ativo (digite qualquer símbolo do Yahoo Finance)", "PETR4.SA")
 start_date = st.sidebar.date_input("Data de Início", date(2024, 1, 1))
 end_date = st.sidebar.date_input("Data de Fim", date.today())
 selected_strategy_name = st.sidebar.selectbox("Escolha a Estratégia", list(STRATEGIES.keys()))
 
-# --- FUNÇÃO PARA CARREGAR DADOS (CORRIGIDA) ---
+# --- PARÂMETROS DINÂMICOS DAS ESTRATÉGIAS ---
+st.sidebar.header("Parâmetros da Estratégia")
+params = {}
+if selected_strategy_name == "Cruzamento de Médias Móveis (SMA)":
+    params['short_window'] = st.sidebar.number_input("Janela Curta", value=20, min_value=1)
+    params['long_window'] = st.sidebar.number_input("Janela Longa", value=50, min_value=1)
+elif selected_strategy_name == "Índice de Força Relativa (RSI)":
+    params['window'] = st.sidebar.number_input("Janela do RSI", value=14, min_value=1)
+    params['buy_level'] = st.sidebar.number_input("Nível de Compra (Sobrevenda)", value=30, min_value=1)
+    params['sell_level'] = st.sidebar.number_input("Nível de Venda (Sobrecompra)", value=70, min_value=1)
+# Adicione `elif` para outras estratégias que você queira customizar...
+
+# --- FUNÇÃO PARA CARREGAR E PREPARAR DADOS (CORRIGIDA) ---
 @st.cache_data
 def load_data(ticker, start, end):
     try:
@@ -57,8 +56,12 @@ def load_data(ticker, start, end):
         if data.empty:
             st.error(f"Não foi possível obter dados para o ativo '{ticker}'. Verifique o símbolo.")
             return None
-        # A linha que causava o erro foi removida.
+        
+        # --- CORREÇÃO IMPORTANTE AQUI ---
+        # Padroniza os nomes das colunas para ter a primeira letra maiúscula
+        data.columns = [col.capitalize() for col in data.columns]
         return data
+        
     except Exception as e:
         st.error(f"Ocorreu um erro ao carregar os dados: {e}")
         return None
@@ -68,16 +71,15 @@ if st.sidebar.button("Executar Backtest"):
     data = load_data(ticker, start_date, end_date)
 
     if data is not None and not data.empty:
-        # Garante que as colunas principais existem antes de prosseguir
         required_cols = {'Open', 'High', 'Low', 'Close'}
         if not required_cols.issubset(data.columns):
-            st.error(f"Os dados carregados para '{ticker}' não contêm as colunas necessárias: Open, High, Low, Close.")
+            st.error(f"Os dados carregados para '{ticker}' não contêm as colunas necessárias: Open, High, Low, Close. Colunas encontradas: {list(data.columns)}")
         else:
             st.subheader(f"Resultados para {ticker} com a estratégia '{selected_strategy_name}'")
             
-            # Seleciona e executa a estratégia
             strategy_function = STRATEGIES[selected_strategy_name]
-            results = strategy_function(data.copy())
+            # Passa os parâmetros dinâmicos para a função
+            results = strategy_function(data.copy(), **params)
 
             # --- VISUALIZAÇÃO DOS RESULTADOS ---
             fig = go.Figure()
