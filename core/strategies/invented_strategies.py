@@ -39,7 +39,7 @@ def vol_regime_switch_strategy(data: pd.DataFrame):
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
 
-    return data[['signal', 'stop', 'target']]
+    return data
 
 def meta_ensemble_strategy(data: pd.DataFrame):
     """
@@ -70,7 +70,7 @@ def meta_ensemble_strategy(data: pd.DataFrame):
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
     
-    return data[['signal', 'stop', 'target']]
+    return data
 
 def pullback_trend_bias_strategy(data: pd.DataFrame):
     """
@@ -91,4 +91,4 @@ def pullback_trend_bias_strategy(data: pd.DataFrame):
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
 
-    return data[['signal', 'stop', 'target']]
+    return data
