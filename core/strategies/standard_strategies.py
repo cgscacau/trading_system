@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from ta.trend import SMAIndicator, EMAIndicator, MACD, ADXIndicator
 from ta.momentum import RSIIndicator
 from ta.volatility import BollingerBands, DonchianChannel
@@ -10,8 +11,10 @@ def sma_crossover_strategy(data: pd.DataFrame, short_window: int = 20, long_wind
     data['signal'] = 0
     data.loc[data['sma_short'] > data['sma_long'], 'signal'] = 1
     data.loc[data['sma_short'] < data['sma_long'], 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+    
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
 
 def ema_crossover_strategy(data: pd.DataFrame, short_window: int = 12, long_window: int = 26, **kwargs):
@@ -21,8 +24,10 @@ def ema_crossover_strategy(data: pd.DataFrame, short_window: int = 12, long_wind
     data['signal'] = 0
     data.loc[data['ema_short'] > data['ema_long'], 'signal'] = 1
     data.loc[data['ema_short'] < data['ema_long'], 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
 
 def rsi_strategy(data: pd.DataFrame, window: int = 14, buy_level: int = 30, sell_level: int = 70, **kwargs):
@@ -31,8 +36,10 @@ def rsi_strategy(data: pd.DataFrame, window: int = 14, buy_level: int = 30, sell
     data['signal'] = 0
     data.loc[data['rsi'] < buy_level, 'signal'] = 1
     data.loc[data['rsi'] > sell_level, 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
 
 def macd_strategy(data: pd.DataFrame, window_slow: int = 26, window_fast: int = 12, window_sign: int = 9, **kwargs):
@@ -43,8 +50,10 @@ def macd_strategy(data: pd.DataFrame, window_slow: int = 26, window_fast: int = 
     data['signal'] = 0
     data.loc[data['macd_line'] > data['signal_line'], 'signal'] = 1
     data.loc[data['macd_line'] < data['signal_line'], 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
 
 def bollinger_mean_reversion_strategy(data: pd.DataFrame, window: int = 20, window_dev: int = 2, **kwargs):
@@ -55,8 +64,10 @@ def bollinger_mean_reversion_strategy(data: pd.DataFrame, window: int = 20, wind
     data['signal'] = 0
     data.loc[data['Close'] < data['bb_low'], 'signal'] = 1
     data.loc[data['Close'] > data['bb_high'], 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
 
 def bollinger_breakout_strategy(data: pd.DataFrame, window: int = 20, window_dev: int = 2, **kwargs):
@@ -67,8 +78,10 @@ def bollinger_breakout_strategy(data: pd.DataFrame, window: int = 20, window_dev
     data['signal'] = 0
     data.loc[data['Close'] > data['bb_high'].shift(1), 'signal'] = 1
     data.loc[data['Close'] < data['bb_low'].shift(1), 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
 
 def adx_dmi_strategy(data: pd.DataFrame, window: int = 14, adx_threshold: int = 25, **kwargs):
@@ -81,8 +94,10 @@ def adx_dmi_strategy(data: pd.DataFrame, window: int = 14, adx_threshold: int = 
     data.loc[buy_condition, 'signal'] = 1
     sell_condition = (data['adx'] > adx_threshold) & (data['dmi_neg'] > data['dmi_pos'])
     data.loc[sell_condition, 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
 
 def donchian_breakout_strategy(data: pd.DataFrame, window: int = 20, **kwargs):
@@ -92,6 +107,8 @@ def donchian_breakout_strategy(data: pd.DataFrame, window: int = 20, **kwargs):
     data['signal'] = 0
     data.loc[data['Close'] > data['donchian_high'].shift(1), 'signal'] = 1
     data.loc[data['Close'] < data['donchian_low'].shift(1), 'signal'] = -1
-    data['stop'] = data['Close'] * 0.95
-    data['target'] = data['Close'] * 1.10
+
+    stop_pct, target_pct = 0.05, 0.10
+    data['stop'] = np.where(data['signal'] == 1, data['Close'] * (1 - stop_pct), data['Close'] * (1 + stop_pct))
+    data['target'] = np.where(data['signal'] == 1, data['Close'] * (1 + target_pct), data['Close'] * (1 - target_pct))
     return data
