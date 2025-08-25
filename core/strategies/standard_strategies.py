@@ -18,7 +18,7 @@ def sma_crossover_strategy(data: pd.DataFrame, short_window: int = 20, long_wind
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
+    return data
 
 def ema_crossover_strategy(data: pd.DataFrame, short_window: int = 12, long_window: int = 26):
     """Gera sinais baseados no cruzamento de duas Médias Móveis Exponenciais (EMA)."""
@@ -33,7 +33,7 @@ def ema_crossover_strategy(data: pd.DataFrame, short_window: int = 12, long_wind
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
+    return data
 
 # --- ESTRATÉGIAS DE MOMENTO (OSCILADORES) ---
 
@@ -49,7 +49,7 @@ def rsi_strategy(data: pd.DataFrame, window: int = 14, buy_level: int = 30, sell
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
+    return data
 
 def macd_strategy(data: pd.DataFrame, window_slow: int = 26, window_fast: int = 12, window_sign: int = 9):
     """Gera sinais baseados no cruzamento da linha MACD e da linha de sinal."""
@@ -66,7 +66,7 @@ def macd_strategy(data: pd.DataFrame, window_slow: int = 26, window_fast: int = 
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
+    return data
 
 # --- ESTRATÉGIAS DE VOLATILIDADE (BANDAS) ---
 
@@ -84,7 +84,7 @@ def bollinger_mean_reversion_strategy(data: pd.DataFrame, window: int = 20, wind
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
+    return data
 
 def bollinger_breakout_strategy(data: pd.DataFrame, window: int = 20, window_dev: int = 2):
     """Estratégia de rompimento (breakout) usando Bandas de Bollinger."""
@@ -100,7 +100,7 @@ def bollinger_breakout_strategy(data: pd.DataFrame, window: int = 20, window_dev
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
+    return data
 
 # --- ESTRATÉGIAS DE TENDÊNCIA E ROMPIMENTO ---
 
@@ -121,8 +121,8 @@ def adx_dmi_strategy(data: pd.DataFrame, window: int = 14, adx_threshold: int = 
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
-
+    return data
+    
 def donchian_breakout_strategy(data: pd.DataFrame, window: int = 20):
     """Gera sinais com base no rompimento dos Canais de Donchian."""
     donchian_indicator = DonchianChannel(high=data['High'], low=data['Low'], close=data['Close'], window=window)
@@ -136,4 +136,4 @@ def donchian_breakout_strategy(data: pd.DataFrame, window: int = 20):
     
     data['stop'] = data['Close'] * 0.95
     data['target'] = data['Close'] * 1.10
-    return data[['signal', 'stop', 'target']]
+    return data
