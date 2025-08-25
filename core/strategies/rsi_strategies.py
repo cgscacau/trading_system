@@ -14,7 +14,7 @@ def rsi_ifr2_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     signals.loc[rsi < params.get('entry', 10), 'signal'] = 1
     signals.loc[rsi > params.get('exit', 70), 'signal'] = -1
     
-    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.97 if signals.loc[r.name, 'signal'] == 1 else pd.NA, axis=1)
+    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.97 if signals.loc[r.name]['signal'] == 1 else pd.NA, axis=1)
     signals['target'] = pd.NA
 
     return signals[['signal', 'stop', 'target']]
@@ -29,7 +29,7 @@ def rsi_standard_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     signals.loc[rsi < params.get('entry_buy', 30), 'signal'] = 1
     signals.loc[rsi > params.get('entry_sell', 70), 'signal'] = -1
     
-    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.98 if signals.loc[r.name, 'signal'] == 1 else r['High'] * 1.02, axis=1)
-    signals['target'] = df_s.apply(lambda r: r['High'] * 1.05 if signals.loc[r.name, 'signal'] == 1 else r['Low'] * 0.95, axis=1)
+    signals['stop'] = df_s.apply(lambda r: r['Low'] * 0.98 if signals.loc[r.name]['signal'] == 1 else r['High'] * 1.02, axis=1)
+    signals['target'] = df_s.apply(lambda r: r['High'] * 1.05 if signals.loc[r.name]['signal'] == 1 else r['Low'] * 0.95, axis=1)
     
     return signals[['signal', 'stop', 'target']]
