@@ -66,6 +66,10 @@ if operation_mode == "Backtest de Ativo Único":
     ticker = st.sidebar.text_input("Ativo", PRESET_TICKERS[preset_selection].split('\n')[0])
     start_date = st.sidebar.date_input("Data de Início", date(2022, 1, 1))
     end_date = st.sidebar.date_input("Data de Fim", date.today())
+    
+    # NOVO: Seletor de Direção do Trade
+    trade_direction = st.sidebar.selectbox("Direção do Trade", ["Comprado e Vendido", "Apenas Comprado", "Apenas Vendido"])
+    
     selected_strategy_name = st.sidebar.selectbox("Escolha a Estratégia", list(STRATEGIES.keys()))
 
     st.sidebar.header("Parâmetros da Estratégia")
@@ -85,6 +89,12 @@ if operation_mode == "Backtest de Ativo Único":
             strategy_function = STRATEGIES[selected_strategy_name]
             results = strategy_function(data.copy(), **params)
             
+            # NOVO: Lógica para filtrar sinais de acordo com a direção escolhida
+            if trade_direction == "Apenas Comprado":
+                results.loc[results['signal'] == -1, 'signal'] = 0
+            elif trade_direction == "Apenas Vendido":
+                results.loc[results['signal'] == 1, 'signal'] = 0
+
             st.subheader("Resumo da Performance Histórica")
             performance = calculate_performance(results)
             cols = st.columns(5)
@@ -108,9 +118,8 @@ if operation_mode == "Backtest de Ativo Único":
             st.subheader("Gráfico de Operações")
             fig = go.Figure()
             fig.add_trace(go.Candlestick(x=results.index, open=results['Open'], high=results['High'], low=results['Low'], close=results['Close'], name='Preço'))
-            trades = results[results['signal'] != results['signal'].shift(1)]
-            for i in range(len(trades)):
-                trade_entry = trades.iloc[i]
+            trades = results[(results['signal'] != 0) & (results['signal'] != results['signal'].shift(1))]
+            for i, trade_entry in trades.iterrows():
                 color = "green" if trade_entry['signal'] == 1 else "red"
                 fig.add_trace(go.Scatter(x=[trade_entry.name], y=[trade_entry['Close']], mode='markers', marker=dict(color=color, symbol='circle', size=12, line=dict(color='white', width=2)), name=f"Entrada {i+1}"))
             
@@ -131,6 +140,16 @@ else: # Modo Screener
     start_date_scr = st.sidebar.date_input("Data de Início", date(2022, 1, 1))
     end_date_scr = st.sidebar.date_input("Data de Fim", date.today())
     
+    # NOVO: Parâmetros Globais para o Screener
+    with st.sidebar.expander("Parâmetros Globais das Estratégias"):
+        screener_params = {
+            'short_window': st.number_input("Janela Curta (SMA/EMA)", value=20, min_value=1, step=1),
+            'long_window': st.number_input("Janela Longa (SMA/EMA)", value=50, min_value=1, step=1),
+            'window': st.number_input("Janela (RSI)", value=14, min_value=1, step=1),
+            'buy_level': st.number_input("Nível de Compra (RSI)", value=30, min_value=1, max_value=100),
+            'sell_level': st.number_input("Nível de Venda (RSI)", value=70, min_value=1, max_value=100),
+        }
+
     if st.sidebar.button("Executar Screener"):
         tickers = [t.strip().upper() for t in tickers_input.split('\n') if t.strip()]
         st.header("Resultados do Screener")
@@ -142,7 +161,7 @@ else: # Modo Screener
             data = load_data(ticker, start_date_scr, end_date_scr)
             if data is not None and not data.empty:
                 for strategy_name, strategy_func in STRATEGIES.items():
-                    results = strategy_func(data.copy())
+                    results = strategy_func(data.copy(), **screener_params)
                     performance = calculate_performance(results)
                     last_signal = results['signal'].iloc[-1]
                     all_results.append({"Ativo": ticker, "Estratégia": strategy_name, "Sinal Atual": "COMPRA" if last_signal == 1 else "VENDA" if last_signal == -1 else "NEUTRO",
