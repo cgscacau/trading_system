@@ -35,20 +35,17 @@ def meta_ensemble_strategy(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     df_s = df.copy()
     signals = pd.DataFrame(index=df_s.index)
 
-    # Lógica 1: EMA Crossover
     ema_short = ta.trend.ema_indicator(df_s['Close'], window=12)
     ema_long = ta.trend.ema_indicator(df_s['Close'], window=26)
     ema_signal = pd.Series(0, index=df_s.index, dtype=int)
     ema_signal[ema_short > ema_long] = 1
     ema_signal[ema_short < ema_long] = -1
 
-    # Lógica 2: RSI Padrão
     rsi = ta.momentum.rsi(df_s['Close'], window=14)
     rsi_signal = pd.Series(0, index=df_s.index, dtype=int)
     rsi_signal[rsi < 30] = 1
     rsi_signal[rsi > 70] = -1
     
-    # Lógica de Votação
     vote_sum = ema_signal + rsi_signal
     signals['signal'] = 0
     signals.loc[vote_sum >= 2, 'signal'] = 1
