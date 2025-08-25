@@ -4,26 +4,23 @@ import yfinance as yf
 import plotly.graph_objects as go
 from datetime import date
 
-# --- Bloco de Importação das Estratégias (Versão Simplificada e Corrigida) ---
+# --- Bloco de Importação das Estratégias (Sintaxe Simplificada) ---
 
 # Importa das estratégias que você inventou
-from core.strategies.invented_strategies import (
-    vol_regime_switch_strategy, 
-    meta_ensemble_strategy, 
-    pullback_trend_bias_strategy
-)
+from core.strategies.invented_strategies import vol_regime_switch_strategy
+from core.strategies.invented_strategies import meta_ensemble_strategy
+from core.strategies.invented_strategies import pullback_trend_bias_strategy
 
 # Importa das estratégias padrão que criámos
-from core.strategies.standard_strategies import (
-    sma_crossover_strategy,
-    ema_crossover_strategy,
-    rsi_strategy,
-    macd_strategy,
-    bollinger_mean_reversion_strategy,
-    bollinger_breakout_strategy,
-    adx_dmi_strategy,
-    donchian_breakout_strategy
-)
+from core.strategies.standard_strategies import sma_crossover_strategy
+from core.strategies.standard_strategies import ema_crossover_strategy
+from core.strategies.standard_strategies import rsi_strategy
+from core.strategies.standard_strategies import macd_strategy
+from core.strategies.standard_strategies import bollinger_mean_reversion_strategy
+from core.strategies.standard_strategies import bollinger_breakout_strategy
+from core.strategies.standard_strategies import adx_dmi_strategy
+from core.strategies.standard_strategies import donchian_breakout_strategy
+
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Lab de Estratégias de Trading", layout="wide")
